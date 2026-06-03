@@ -115,8 +115,8 @@ const ShipperApp = () => {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="shipper">Chọn Shipper</Label>
-                  <Select value={selectedShipper} onValueChange={setSelectedShipper} data-testid="shipper-select">
-                    <SelectTrigger>
+                  <Select value={selectedShipper} onValueChange={setSelectedShipper}>
+                    <SelectTrigger data-testid="shipper-select">
                       <SelectValue placeholder="Chọn shipper..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -131,8 +131,8 @@ const ShipperApp = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="status">Trạng Thái Mới</Label>
-                  <Select value={status} onValueChange={setStatus} data-testid="status-select">
-                    <SelectTrigger>
+                  <Select value={status} onValueChange={setStatus}>
+                    <SelectTrigger data-testid="status-select">
                       <SelectValue placeholder="Chọn trạng thái..." />
                     </SelectTrigger>
                     <SelectContent>
