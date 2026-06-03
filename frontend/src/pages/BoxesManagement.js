@@ -188,6 +188,18 @@ const BoxesManagement = () => {
                 <Button size="sm" variant="outline" onClick={() => handleViewHistory(box)} data-testid={`view-history-${box.box_id}`}>
                   📜 Lịch Sử
                 </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => {
+                    const link = `${window.location.origin}/track/${box.box_id}`;
+                    navigator.clipboard.writeText(link);
+                    alert(`Đã copy link cho khách hàng:\n${link}`);
+                  }} 
+                  data-testid={`copy-track-link-${box.box_id}`}
+                >
+                  🔗 Link KH
+                </Button>
                 <Button size="sm" variant="destructive" onClick={() => handleDeleteBox(box.box_id)} data-testid={`delete-${box.box_id}`}>
                   Xóa
                 </Button>
