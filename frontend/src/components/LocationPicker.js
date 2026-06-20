@@ -13,16 +13,20 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-// Vietnamese cities preset
+// Da Nang area preset locations
 const PRESET_LOCATIONS = [
-  { name: 'Hà Nội', lat: 21.0285, lng: 105.8542 },
-  { name: 'Hải Phòng', lat: 20.8449, lng: 106.6881 },
-  { name: 'Đà Nẵng', lat: 16.0544, lng: 108.2022 },
-  { name: 'Huế', lat: 16.4637, lng: 107.5909 },
-  { name: 'Nha Trang', lat: 12.2388, lng: 109.1967 },
-  { name: 'TP.HCM', lat: 10.8231, lng: 106.6297 },
-  { name: 'Cần Thơ', lat: 10.0452, lng: 105.7469 },
-  { name: 'Vinh', lat: 18.6796, lng: 105.6822 },
+  { name: 'Trung tâm ĐN', lat: 16.0544, lng: 108.2022 },
+  { name: 'Hải Châu', lat: 16.0668, lng: 108.2208 },
+  { name: 'Thanh Khê', lat: 16.0639, lng: 108.1825 },
+  { name: 'Sơn Trà', lat: 16.1067, lng: 108.2627 },
+  { name: 'Ngũ Hành Sơn', lat: 16.0073, lng: 108.2528 },
+  { name: 'Liên Chiểu', lat: 16.0816, lng: 108.1545 },
+  { name: 'Cẩm Lệ', lat: 16.0181, lng: 108.2024 },
+  { name: 'Hoà Vang', lat: 15.9849, lng: 108.1290 },
+  { name: 'Cầu Rồng', lat: 16.0612, lng: 108.2272 },
+  { name: 'Sân bay ĐN', lat: 16.0439, lng: 108.1995 },
+  { name: 'Bà Nà Hills', lat: 15.9978, lng: 107.9881 },
+  { name: 'Hội An', lat: 15.8800, lng: 108.3380 },
 ];
 
 const ClickHandler = ({ onPick }) => {
