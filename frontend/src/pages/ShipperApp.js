@@ -27,33 +27,91 @@ const ShipperApp = () => {
   const [alert, setAlert] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [location, setLocation] = useState(null);
-  const [locationStatus, setLocationStatus] = useState('idle'); // idle, loading, success, error
+  const [locationStatus, setLocationStatus] = useState('idle'); // idle, loading, success, error, denied
+  const [locationError, setLocationError] = useState('');
+  const [showGpsHelp, setShowGpsHelp] = useState(false);
 
   useEffect(() => {
     loadShippers();
-    requestLocation();
+    // Check permission state without prompting
+    checkLocationPermission();
   }, []);
+
+  const checkLocationPermission = async () => {
+    if (!navigator.geolocation) {
+      setLocationStatus('error');
+      setLocationError('Trình duyệt không hỗ trợ GPS');
+      return;
+    }
+    // Try Permissions API to check state
+    if (navigator.permissions && navigator.permissions.query) {
+      try {
+        const result = await navigator.permissions.query({ name: 'geolocation' });
+        if (result.state === 'granted') {
+          // Already granted, can request silently
+          requestLocation();
+        } else if (result.state === 'denied') {
+          setLocationStatus('denied');
+        }
+        // 'prompt' state -> show button, user must click to grant
+      } catch (e) {
+        // Permissions API not available, just leave idle
+      }
+    }
+  };
 
   const requestLocation = () => {
     if (!navigator.geolocation) {
       setLocationStatus('error');
+      setLocationError('Trình duyệt không hỗ trợ GPS');
       return;
     }
     setLocationStatus('loading');
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLocation({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          accuracy: pos.coords.accuracy
-        });
-        setLocationStatus('success');
-      },
-      (err) => {
-        console.warn('Geolocation error:', err);
+    setLocationError('');
+
+    const onSuccess = (pos) => {
+      setLocation({
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        accuracy: pos.coords.accuracy
+      });
+      setLocationStatus('success');
+    };
+
+    const onError = (err) => {
+      console.warn('Geolocation error:', err);
+      // err.code 1 = PERMISSION_DENIED
+      if (err.code === 1) {
+        setLocationStatus('denied');
+        setLocationError('Bạn đã từ chối quyền GPS. Vui lòng mở Cài đặt để bật lại.');
+      } else if (err.code === 2) {
         setLocationStatus('error');
+        setLocationError('Không xác định được vị trí. Hãy ra ngoài trời hoặc gần cửa sổ.');
+      } else if (err.code === 3) {
+        setLocationStatus('error');
+        setLocationError('Lấy vị trí quá lâu. Vui lòng thử lại.');
+      } else {
+        setLocationStatus('error');
+        setLocationError(err.message || 'Lỗi không xác định');
+      }
+    };
+
+    // Try with high accuracy first, fallback to low if fails
+    navigator.geolocation.getCurrentPosition(
+      onSuccess,
+      (err) => {
+        if (err.code === 3) {
+          // Timeout - try again with lower accuracy
+          navigator.geolocation.getCurrentPosition(
+            onSuccess,
+            onError,
+            { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 }
+          );
+        } else {
+          onError(err);
+        }
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
     );
   };
 
@@ -190,31 +248,103 @@ const ShipperApp = () => {
             )}
 
             {/* GPS Status */}
-            <div className="mt-3 flex items-center gap-2 flex-wrap">
-              {locationStatus === 'loading' && (
-                <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300">
-                  📍 Đang lấy vị trí...
-                </Badge>
-              )}
-              {locationStatus === 'success' && (
-                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300" data-testid="gps-status">
-                  📍 GPS sẵn sàng ({location?.accuracy?.toFixed(0)}m)
-                </Badge>
-              )}
-              {locationStatus === 'error' && (
-                <>
-                  <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300">
-                    📍 Chưa có GPS
-                  </Badge>
-                  <Button size="sm" variant="outline" onClick={requestLocation} className="h-7 text-xs">
-                    🔄 Thử lại
-                  </Button>
-                </>
-              )}
+            <div className="mt-3 space-y-2">
               {locationStatus === 'idle' && (
-                <Button size="sm" variant="outline" onClick={requestLocation} className="h-7 text-xs">
-                  📍 Bật GPS
+                <Button 
+                  type="button"
+                  onClick={requestLocation} 
+                  className="w-full h-11 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                  data-testid="enable-gps-button"
+                >
+                  📍 Bật GPS Vị Trí
                 </Button>
+              )}
+
+              {locationStatus === 'loading' && (
+                <div className="flex items-center justify-center gap-2 py-2 bg-yellow-50 border border-yellow-300 rounded-md">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-600"></div>
+                  <span className="text-sm text-yellow-800">Đang lấy vị trí GPS...</span>
+                </div>
+              )}
+
+              {locationStatus === 'success' && (
+                <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-300 rounded-md" data-testid="gps-status">
+                  <span className="text-green-700 text-sm">📍 GPS sẵn sàng</span>
+                  <span className="text-xs text-green-600">(±{location?.accuracy?.toFixed(0)}m)</span>
+                  <Button 
+                    size="sm" 
+                    variant="ghost" 
+                    onClick={requestLocation} 
+                    className="ml-auto h-6 text-xs"
+                  >
+                    🔄 Cập nhật
+                  </Button>
+                </div>
+              )}
+
+              {locationStatus === 'error' && (
+                <div className="px-3 py-2 bg-red-50 border border-red-300 rounded-md">
+                  <p className="text-sm text-red-800">⚠️ {locationError}</p>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={requestLocation} 
+                    className="mt-2 h-7 text-xs"
+                  >
+                    🔄 Thử Lại
+                  </Button>
+                </div>
+              )}
+
+              {locationStatus === 'denied' && (
+                <div className="px-3 py-3 bg-orange-50 border-2 border-orange-300 rounded-md space-y-2">
+                  <p className="text-sm font-semibold text-orange-900">
+                    🚫 Quyền GPS đã bị từ chối
+                  </p>
+                  <p className="text-xs text-orange-800">
+                    Trình duyệt không cho phép xin lại quyền. Bạn cần bật thủ công trong cài đặt:
+                  </p>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => setShowGpsHelp(!showGpsHelp)}
+                    className="h-7 text-xs"
+                  >
+                    {showGpsHelp ? '▲ Ẩn hướng dẫn' : '▼ Xem hướng dẫn bật GPS'}
+                  </Button>
+                  {showGpsHelp && (
+                    <div className="bg-white p-3 rounded border border-orange-200 text-xs space-y-2">
+                      <div>
+                        <p className="font-semibold text-orange-900">📱 iPhone (Safari):</p>
+                        <ol className="ml-4 list-decimal space-y-1 text-gray-700">
+                          <li>Mở <strong>Cài đặt</strong> → <strong>Safari</strong></li>
+                          <li>Cuộn xuống → <strong>Vị trí</strong> → chọn <strong>Hỏi</strong> hoặc <strong>Cho phép</strong></li>
+                          <li>Quay lại Safari → Tải lại trang</li>
+                        </ol>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-orange-900">📱 Android (Chrome):</p>
+                        <ol className="ml-4 list-decimal space-y-1 text-gray-700">
+                          <li>Nhấn biểu tượng <strong>🔒/ⓘ</strong> bên trái thanh địa chỉ</li>
+                          <li>Chọn <strong>Quyền</strong> → <strong>Vị trí</strong> → <strong>Cho phép</strong></li>
+                          <li>Tải lại trang</li>
+                        </ol>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-orange-900">💬 Zalo Browser:</p>
+                        <p className="text-gray-700 ml-4">Zalo browser thường <strong>không hỗ trợ GPS</strong>. Vui lòng nhấn <strong>"..."</strong> → <strong>Mở trong Safari/Chrome</strong></p>
+                      </div>
+                    </div>
+                  )}
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={requestLocation} 
+                    className="h-7 text-xs"
+                  >
+                    🔄 Đã bật, thử lại
+                  </Button>
+                </div>
               )}
             </div>
           </CardContent>
