@@ -71,6 +71,8 @@ class Box(BaseModel):
     customer_name: str
     status: str = "WAITING_FOR_PICKUP"  # WAITING_FOR_PICKUP, PICKED_UP, IN_HUB, DELIVERED
     qr_code_data: Optional[str] = None
+    last_latitude: Optional[float] = None
+    last_longitude: Optional[float] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     last_updated: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -89,6 +91,8 @@ class TrackingHistory(BaseModel):
     shipper_name: str
     status: str
     notes: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class TrackingHistoryCreate(BaseModel):
@@ -97,6 +101,8 @@ class TrackingHistoryCreate(BaseModel):
     shipper_name: str
     status: str
     notes: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 
 class QRScanRequest(BaseModel):
@@ -104,6 +110,8 @@ class QRScanRequest(BaseModel):
     shipper_id: str
     status: str
     notes: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 
 # ============== HELPER FUNCTIONS ==============
@@ -271,14 +279,17 @@ async def process_qr_scan(data: QRScanRequest):
     
     # Update box status
     now = datetime.now(timezone.utc)
+    update_fields = {
+        "status": data.status,
+        "last_updated": now.isoformat()
+    }
+    if data.latitude is not None and data.longitude is not None:
+        update_fields["last_latitude"] = data.latitude
+        update_fields["last_longitude"] = data.longitude
+    
     await db.boxes.update_one(
         {"box_id": data.box_id},
-        {
-            "$set": {
-                "status": data.status,
-                "last_updated": now.isoformat()
-            }
-        }
+        {"$set": update_fields}
     )
     
     # Create tracking history
@@ -288,6 +299,8 @@ async def process_qr_scan(data: QRScanRequest):
         shipper_name=shipper['name'],
         status=data.status,
         notes=data.notes,
+        latitude=data.latitude,
+        longitude=data.longitude,
         timestamp=now
     )
     

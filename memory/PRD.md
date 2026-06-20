@@ -85,6 +85,14 @@ Người dùng cung cấp đoạn code FastAPI cho "Smart Mini Storage API" - h�
 - ✅ Admin dashboard with real-time stats
 - ✅ Shipper app with manual + camera QR input
 - ✅ Beautiful Vietnamese UI with Tailwind + shadcn
+- ✅ **Public customer tracking** at `/track/:boxId` (no login required)
+- ✅ **Mobile-optimized camera scanner** with rear camera detection
+- ✅ **Zalo browser error suppression** (zaloJSV2 filter)
+- ✅ **GPS location tracking** - shipper GPS captured on every scan
+- ✅ **Real map integration** (Leaflet + OpenStreetMap, free, no API key) in:
+  - Admin Dashboard - live map showing all box locations
+  - Box Detail History - route polyline + markers per scan event
+  - Customer Tracking - public-facing journey map with timeline
 
 ## Next Tasks
 - Awaiting user feedback for next iteration

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getDashboardStats } from '@/services/api';
+import { getDashboardStats, getBoxes } from '@/services/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import MapView from '@/components/MapView';
 
 const StatCard = ({ title, value, description, color = 'blue', testId }) => {
   const colorClasses = {
@@ -27,21 +28,26 @@ const StatCard = ({ title, value, description, color = 'blue', testId }) => {
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
+  const [boxes, setBoxes] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadStats();
-    const interval = setInterval(loadStats, 5000);
+    loadAll();
+    const interval = setInterval(loadAll, 5000);
     return () => clearInterval(interval);
   }, []);
 
-  const loadStats = async () => {
+  const loadAll = async () => {
     try {
-      const response = await getDashboardStats();
-      setStats(response.data);
+      const [statsRes, boxesRes] = await Promise.all([
+        getDashboardStats(),
+        getBoxes()
+      ]);
+      setStats(statsRes.data);
+      setBoxes(boxesRes.data);
       setLoading(false);
     } catch (error) {
-      console.error('Error loading stats:', error);
+      console.error('Error loading data:', error);
       setLoading(false);
     }
   };
@@ -57,6 +63,8 @@ const AdminDashboard = () => {
     );
   }
 
+  const boxesWithGPS = boxes.filter(b => b.last_latitude && b.last_longitude);
+
   return (
     <div className="p-6 space-y-6" data-testid="admin-dashboard">
       <div className="flex justify-between items-center">
@@ -64,7 +72,7 @@ const AdminDashboard = () => {
           <h1 className="text-3xl font-bold text-gray-900">📊 Dashboard Tổng Quan</h1>
           <p className="text-gray-600 mt-1">Theo dõi hoạt động hệ thống theo thời gian thực</p>
         </div>
-        <Button onClick={loadStats} variant="outline" data-testid="refresh-stats">
+        <Button onClick={loadAll} variant="outline" data-testid="refresh-stats">
           ↻ Làm Mới
         </Button>
       </div>
@@ -87,6 +95,35 @@ const AdminDashboard = () => {
           <StatCard title="Shippers" value={`${stats?.shippers?.active || 0}/${stats?.shippers?.total || 0}`} description="Đang hoạt động / Tổng số" color="green" testId="stat-shippers" />
           <StatCard title="Sự Kiện Tracking" value={stats?.tracking_events || 0} description="Tổng lượt quét QR" color="purple" testId="stat-tracking" />
         </div>
+      </div>
+
+      {/* Live Map */}
+      <div>
+        <h2 className="text-xl font-semibold text-gray-800 mb-4">🗺️ Bản Đồ Live - Vị Trí Thùng Hàng</h2>
+        <Card>
+          <CardContent className="pt-6">
+            <MapView
+              height="500px"
+              testId="admin-map"
+              markers={boxesWithGPS.map(b => ({
+                id: b.box_id,
+                lat: b.last_latitude,
+                lng: b.last_longitude,
+                status: b.status,
+                title: `📦 ${b.box_id}`,
+                description: `KH: ${b.customer_name}`,
+                time: new Date(b.last_updated).toLocaleString('vi-VN')
+              }))}
+            />
+            <div className="flex flex-wrap gap-3 mt-3 text-xs">
+              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-yellow-500"></span> Chờ Lấy</span>
+              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-blue-500"></span> Đã Lấy</span>
+              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-purple-500"></span> Ở Hub</span>
+              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-green-500"></span> Đã Giao</span>
+              <span className="ml-auto text-gray-500">Hiển thị {boxesWithGPS.length}/{boxes.length} thùng có GPS</span>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <div>

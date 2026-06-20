@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import MapView from '@/components/MapView';
 
 const statusColors = {
   'WAITING_FOR_PICKUP': 'bg-yellow-100 text-yellow-800 border-yellow-300',
@@ -271,11 +272,37 @@ const BoxesManagement = () => {
       </Dialog>
 
       <Dialog open={showHistoryDialog} onOpenChange={setShowHistoryDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Lịch Sử Tracking: {selectedBox?.box_id}</DialogTitle>
             <DialogDescription>Khách hàng: {selectedBox?.customer_name}</DialogDescription>
           </DialogHeader>
+
+          {/* Map of route */}
+          {boxHistory.filter(h => h.latitude && h.longitude).length > 0 && (
+            <div className="mb-4">
+              <h4 className="text-sm font-semibold mb-2">🗺️ Bản đồ lộ trình</h4>
+              <MapView
+                height="300px"
+                testId="box-history-map"
+                showPath={true}
+                markers={boxHistory
+                  .filter(h => h.latitude && h.longitude)
+                  .slice().reverse()
+                  .map(h => ({
+                    id: h.id,
+                    lat: h.latitude,
+                    lng: h.longitude,
+                    status: h.status,
+                    title: statusLabels[h.status] || h.status,
+                    description: `Shipper: ${h.shipper_name}`,
+                    time: new Date(h.timestamp).toLocaleString('vi-VN')
+                  }))
+                }
+              />
+            </div>
+          )}
+
           <div className="space-y-3 max-h-96 overflow-y-auto">
             {boxHistory.length === 0 ? (
               <p className="text-center text-gray-500">Chưa có lịch sử</p>
@@ -291,6 +318,9 @@ const BoxesManagement = () => {
                     </span>
                   </div>
                   <p className="text-sm"><strong>Shipper:</strong> {record.shipper_name}</p>
+                  {record.latitude && record.longitude && (
+                    <p className="text-xs text-blue-600 mt-1">📍 {record.latitude.toFixed(6)}, {record.longitude.toFixed(6)}</p>
+                  )}
                   {record.notes && <p className="text-sm text-gray-600 mt-1"><strong>Ghi chú:</strong> {record.notes}</p>}
                 </div>
               ))

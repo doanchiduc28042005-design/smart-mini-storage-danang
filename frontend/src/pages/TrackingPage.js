@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import MapView from '@/components/MapView';
 
 const statusConfig = {
   'WAITING_FOR_PICKUP': { label: '⏳ Chờ Shipper Lấy', color: 'bg-yellow-100 text-yellow-800 border-yellow-300', step: 1 },
@@ -214,6 +215,11 @@ const TrackingPage = () => {
                           <p className="text-sm text-gray-700 mt-1">
                             <strong>Shipper:</strong> {record.shipper_name}
                           </p>
+                          {record.latitude && record.longitude && (
+                            <p className="text-xs text-blue-600 mt-1">
+                              📍 Tọa độ: {record.latitude.toFixed(6)}, {record.longitude.toFixed(6)}
+                            </p>
+                          )}
                           {record.notes && (
                             <p className="text-sm text-gray-600 mt-1 bg-gray-50 p-2 rounded">
                               💬 {record.notes}
@@ -224,6 +230,37 @@ const TrackingPage = () => {
                     ))}
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* Map View */}
+            <Card>
+              <CardHeader>
+                <CardTitle>🗺️ Bản Đồ Lộ Trình</CardTitle>
+                <CardDescription>Vị trí cập nhật của thùng hàng</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <MapView
+                  height="400px"
+                  testId="customer-map"
+                  showPath={true}
+                  markers={history
+                    .filter(h => h.latitude && h.longitude)
+                    .reverse()
+                    .map((h, idx) => ({
+                      id: h.id,
+                      lat: h.latitude,
+                      lng: h.longitude,
+                      status: h.status,
+                      title: `${statusConfig[h.status]?.label || h.status}`,
+                      description: `Shipper: ${h.shipper_name}${h.notes ? ' • ' + h.notes : ''}`,
+                      time: new Date(h.timestamp).toLocaleString('vi-VN')
+                    }))
+                  }
+                />
+                <p className="text-xs text-gray-500 mt-2 text-center">
+                  💡 Đường nét đứt thể hiện hành trình của thùng hàng
+                </p>
               </CardContent>
             </Card>
 
