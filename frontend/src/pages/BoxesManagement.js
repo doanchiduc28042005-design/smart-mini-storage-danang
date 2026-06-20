@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getBoxes, createBox, deleteBox, getCustomers, getBoxHistory } from '@/services/api';
+import { getBoxes, createBox, deleteBox, getCustomers, getBoxHistory, updateBoxLocation } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import MapView from '@/components/MapView';
+import LocationPicker from '@/components/LocationPicker';
 
 const statusColors = {
   'WAITING_FOR_PICKUP': 'bg-yellow-100 text-yellow-800 border-yellow-300',
@@ -32,6 +33,7 @@ const BoxesManagement = () => {
   const [boxHistory, setBoxHistory] = useState([]);
   const [showHistoryDialog, setShowHistoryDialog] = useState(false);
   const [showQRDialog, setShowQRDialog] = useState(false);
+  const [showLocationDialog, setShowLocationDialog] = useState(false);
 
   const [selectedCustomer, setSelectedCustomer] = useState('');
   const [customBoxId, setCustomBoxId] = useState('');
@@ -111,6 +113,22 @@ const BoxesManagement = () => {
     setShowQRDialog(true);
   };
 
+  const handleOpenLocation = (box) => {
+    setSelectedBox(box);
+    setShowLocationDialog(true);
+  };
+
+  const handleSaveLocation = async (data) => {
+    try {
+      await updateBoxLocation(selectedBox.box_id, data);
+      setShowLocationDialog(false);
+      loadBoxes();
+      alert(`✓ Đã cập nhật vị trí thùng ${selectedBox.box_id}`);
+    } catch (error) {
+      alert('Lỗi khi cập nhật vị trí: ' + (error.response?.data?.detail || error.message));
+    }
+  };
+
   const handlePrintQR = () => {
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
@@ -184,10 +202,19 @@ const BoxesManagement = () => {
               </p>
               <div className="flex gap-2 flex-wrap">
                 <Button size="sm" variant="outline" onClick={() => handleViewQR(box)} data-testid={`view-qr-${box.box_id}`}>
-                  🔲 Xem QR
+                  🔲 QR
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => handleViewHistory(box)} data-testid={`view-history-${box.box_id}`}>
                   📜 Lịch Sử
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => handleOpenLocation(box)} 
+                  data-testid={`update-location-${box.box_id}`}
+                  className={box.last_latitude ? 'bg-green-50 border-green-300 text-green-700 hover:bg-green-100' : 'bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100'}
+                >
+                  📍 {box.last_latitude ? 'Đổi VT' : 'Set VT'}
                 </Button>
                 <Button 
                   size="sm" 
@@ -268,6 +295,31 @@ const BoxesManagement = () => {
               🖨️ In Mã QR
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Location Picker Dialog */}
+      <Dialog open={showLocationDialog} onOpenChange={setShowLocationDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>📍 Cập Nhật Vị Trí: {selectedBox?.box_id}</DialogTitle>
+            <DialogDescription>
+              Khách hàng: {selectedBox?.customer_name}
+              {selectedBox?.last_latitude && (
+                <span className="block text-xs mt-1">
+                  Vị trí hiện tại: {selectedBox.last_latitude.toFixed(6)}, {selectedBox.last_longitude.toFixed(6)}
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedBox && showLocationDialog && (
+            <LocationPicker
+              initialLat={selectedBox.last_latitude}
+              initialLng={selectedBox.last_longitude}
+              onSave={handleSaveLocation}
+              onCancel={() => setShowLocationDialog(false)}
+            />
+          )}
         </DialogContent>
       </Dialog>
 

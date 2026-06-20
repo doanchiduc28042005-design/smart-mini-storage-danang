@@ -25,6 +25,7 @@ export const getBoxes = (status) => apiClient.get('/boxes', { params: { status }
 export const createBox = (data) => apiClient.post('/boxes', data);
 export const getBox = (boxId) => apiClient.get(`/boxes/${boxId}`);
 export const deleteBox = (boxId) => apiClient.delete(`/boxes/${boxId}`);
+export const updateBoxLocation = (boxId, data) => apiClient.patch(`/boxes/${boxId}/location`, data);
 
 // QR Scan & Tracking
 export const scanQR = (data) => apiClient.post('/v1/storage/scan', data);

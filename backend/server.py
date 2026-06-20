@@ -263,6 +263,36 @@ async def delete_box(box_id: str):
     return {"success": True, "message": "Đã xóa thùng hàng"}
 
 
+class LocationUpdate(BaseModel):
+    latitude: float
+    longitude: float
+
+@api_router.patch("/boxes/{box_id}/location")
+async def update_box_location(box_id: str, data: LocationUpdate):
+    """Manually update box GPS location (admin)"""
+    now = datetime.now(timezone.utc)
+    result = await db.boxes.update_one(
+        {"box_id": box_id},
+        {
+            "$set": {
+                "last_latitude": data.latitude,
+                "last_longitude": data.longitude,
+                "last_updated": now.isoformat()
+            }
+        }
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Thùng hàng không tồn tại")
+    
+    updated_box = await db.boxes.find_one({"box_id": box_id}, {"_id": 0})
+    if isinstance(updated_box['last_updated'], str):
+        updated_box['last_updated'] = datetime.fromisoformat(updated_box['last_updated'])
+    if isinstance(updated_box['created_at'], str):
+        updated_box['created_at'] = datetime.fromisoformat(updated_box['created_at'])
+    
+    return {"success": True, "message": "Đã cập nhật vị trí", "box": updated_box}
+
+
 # ============== QR SCAN & TRACKING ENDPOINTS ==============
 
 @api_router.post("/v1/storage/scan")
