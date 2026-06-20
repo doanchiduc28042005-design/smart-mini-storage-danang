@@ -21,7 +21,7 @@ const AdminLayout = ({ children }) => {
       <aside className="w-64 bg-white shadow-md flex flex-col" data-testid="admin-sidebar">
         <div className="p-6 border-b">
           <h2 className="text-xl font-bold text-gray-900">📦 Smart Storage</h2>
-          <p className="text-xs text-gray-500 mt-1">Admin Panel</p>
+          <p className="text-xs text-gray-500 mt-1">Admin Panel • Đà Nẵng</p>
         </div>
         <nav className="flex-1 p-4 space-y-2">
           {navItems.map((item) => (

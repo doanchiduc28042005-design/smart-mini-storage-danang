@@ -223,6 +223,7 @@ const ShipperApp = () => {
         <div className="text-center">
           <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-1">📦 Shipper App</h1>
           <p className="text-sm md:text-base text-gray-600">Quét QR & cập nhật trạng thái</p>
+          <p className="text-xs text-gray-500 mt-1">🏙️ Khu vực hoạt động: Đà Nẵng</p>
         </div>
 
         {/* Shipper Selection (Always Visible) */}

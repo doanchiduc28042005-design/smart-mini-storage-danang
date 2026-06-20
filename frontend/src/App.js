@@ -20,6 +20,9 @@ const LandingPage = () => {
           <p className="text-xl text-gray-600">
             Hệ thống quản lý kho thông minh với QR Code
           </p>
+          <p className="text-sm text-gray-500 mt-2">
+            🏙️ Phục vụ khu vực Thành phố Đà Nẵng
+          </p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-6">

@@ -59,7 +59,7 @@ const FitBounds = ({ markers }) => {
   return null;
 };
 
-const MapView = ({ markers = [], height = '400px', center = [16.0544, 108.2022], zoom = 6, showPath = false, testId = 'map-view' }) => {
+const MapView = ({ markers = [], height = '400px', center = [16.0544, 108.2022], zoom = 12, showPath = false, testId = 'map-view' }) => {
   const validMarkers = markers.filter(m => m.lat && m.lng);
   const pathPoints = showPath ? validMarkers.map(m => [m.lat, m.lng]) : [];
 

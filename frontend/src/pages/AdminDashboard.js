@@ -70,7 +70,7 @@ const AdminDashboard = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">📊 Dashboard Tổng Quan</h1>
-          <p className="text-gray-600 mt-1">Theo dõi hoạt động hệ thống theo thời gian thực</p>
+          <p className="text-gray-600 mt-1">Theo dõi hoạt động hệ thống tại Đà Nẵng theo thời gian thực 🏙️</p>
         </div>
         <Button onClick={loadAll} variant="outline" data-testid="refresh-stats">
           ↻ Làm Mới
@@ -99,7 +99,7 @@ const AdminDashboard = () => {
 
       {/* Live Map */}
       <div>
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">🗺️ Bản Đồ Live - Vị Trí Thùng Hàng</h2>
+        <h2 className="text-xl font-semibold text-gray-800 mb-4">🗺️ Bản Đồ Live - Vị Trí Thùng Hàng Tại Đà Nẵng</h2>
         <Card>
           <CardContent className="pt-6">
             <MapView

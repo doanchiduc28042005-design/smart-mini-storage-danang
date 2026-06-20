@@ -107,6 +107,7 @@ const TrackingPage = () => {
         <div className="text-center">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">📦 Theo Dõi Đơn Hàng</h1>
           <p className="text-gray-600">Nhập mã thùng để xem trạng thái giao hàng</p>
+          <p className="text-xs text-gray-500 mt-1">🏙️ Phục vụ khu vực Đà Nẵng</p>
         </div>
 
         {/* Search Form */}

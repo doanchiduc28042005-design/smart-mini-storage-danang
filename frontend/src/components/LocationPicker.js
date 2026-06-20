@@ -13,6 +13,19 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
+// Da Nang bounding box (approximate)
+const DANANG_BOUNDS = {
+  minLat: 15.85,   // South (Hội An)
+  maxLat: 16.20,   // North (Hải Vân pass)
+  minLng: 107.85,  // West (Bà Nà mountains)
+  maxLng: 108.40,  // East (sea/Sơn Trà)
+};
+
+const isInDaNang = (lat, lng) => {
+  return lat >= DANANG_BOUNDS.minLat && lat <= DANANG_BOUNDS.maxLat &&
+         lng >= DANANG_BOUNDS.minLng && lng <= DANANG_BOUNDS.maxLng;
+};
+
 // Da Nang area preset locations
 const PRESET_LOCATIONS = [
   { name: 'Trung tâm ĐN', lat: 16.0544, lng: 108.2022 },
@@ -52,6 +65,7 @@ const LocationPicker = ({ initialLat, initialLng, onSave, onCancel }) => {
   const [lat, setLat] = useState(initialLat || 16.0544);
   const [lng, setLng] = useState(initialLng || 108.2022);
   const [searching, setSearching] = useState(false);
+  const outOfBounds = !isInDaNang(lat, lng);
 
   const handleUseMyLocation = () => {
     if (!navigator.geolocation) {
@@ -61,8 +75,16 @@ const LocationPicker = ({ initialLat, initialLng, onSave, onCancel }) => {
     setSearching(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setLat(pos.coords.latitude);
-        setLng(pos.coords.longitude);
+        const newLat = pos.coords.latitude;
+        const newLng = pos.coords.longitude;
+        if (!isInDaNang(newLat, newLng)) {
+          if (!window.confirm(`⚠️ Vị trí GPS của bạn (${newLat.toFixed(4)}, ${newLng.toFixed(4)}) ngoài khu vực Đà Nẵng.\n\nHiện hệ thống chỉ phục vụ khu vực Đà Nẵng. Bạn vẫn muốn dùng vị trí này?`)) {
+            setSearching(false);
+            return;
+          }
+        }
+        setLat(newLat);
+        setLng(newLng);
         setSearching(false);
       },
       (err) => {
@@ -79,13 +101,21 @@ const LocationPicker = ({ initialLat, initialLng, onSave, onCancel }) => {
   };
 
   const handleSave = () => {
+    if (outOfBounds) {
+      if (!window.confirm('⚠️ Vị trí đã chọn ngoài khu vực Đà Nẵng. Bạn vẫn muốn lưu?')) {
+        return;
+      }
+    }
     onSave({ latitude: parseFloat(lat), longitude: parseFloat(lng) });
   };
 
   return (
     <div className="space-y-3" data-testid="location-picker">
+      <div className="bg-blue-50 border border-blue-200 rounded-md p-2 text-xs text-blue-800">
+        🏙️ <strong>Khu vực phục vụ:</strong> Thành phố Đà Nẵng
+      </div>
       <p className="text-sm text-gray-600">
-        💡 <strong>Click trực tiếp lên bản đồ</strong>, dùng vị trí của bạn, hoặc chọn thành phố
+        💡 <strong>Click trực tiếp lên bản đồ</strong>, dùng vị trí của bạn, hoặc chọn quận
       </p>
 
       {/* Map */}
@@ -95,6 +125,8 @@ const LocationPicker = ({ initialLat, initialLng, onSave, onCancel }) => {
           zoom={12}
           style={{ height: '100%', width: '100%' }}
           scrollWheelZoom={true}
+          maxBounds={[[DANANG_BOUNDS.minLat - 0.2, DANANG_BOUNDS.minLng - 0.3], [DANANG_BOUNDS.maxLat + 0.2, DANANG_BOUNDS.maxLng + 0.3]]}
+          minZoom={9}
         >
           <TileLayer
             attribution='&copy; OpenStreetMap'
@@ -105,6 +137,12 @@ const LocationPicker = ({ initialLat, initialLng, onSave, onCancel }) => {
           <RecenterMap position={[lat, lng]} />
         </MapContainer>
       </div>
+
+      {outOfBounds && (
+        <div className="bg-orange-50 border border-orange-300 rounded-md p-2 text-xs text-orange-800">
+          ⚠️ Vị trí này ngoài khu vực Đà Nẵng. Vui lòng chọn lại trong phạm vi thành phố.
+        </div>
+      )}
 
       {/* Coordinates */}
       <div className="grid grid-cols-2 gap-2">
