@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getMyBoxes } from '@/services/api';
+import { getMyBoxes, setAuthToken } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,8 +35,9 @@ const CustomerDashboard = () => {
   };
 
   const handleLogout = async () => {
-    await logout();
-    navigate('/');
+    setAuthToken(null);
+    navigate('/', { replace: true });
+    logout();
   };
 
   if (!user) return null;
