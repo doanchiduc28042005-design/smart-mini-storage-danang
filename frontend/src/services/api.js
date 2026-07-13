@@ -8,7 +8,32 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true,
 });
+
+// Auth token management
+export const setAuthToken = (token) => {
+  if (token) {
+    localStorage.setItem('auth_token', token);
+    apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  } else {
+    localStorage.removeItem('auth_token');
+    delete apiClient.defaults.headers.common['Authorization'];
+  }
+};
+
+// Initialize token from localStorage
+const savedToken = localStorage.getItem('auth_token');
+if (savedToken) {
+  apiClient.defaults.headers.common['Authorization'] = `Bearer ${savedToken}`;
+}
+
+// Auth endpoints
+export const registerCustomer = (data) => apiClient.post('/auth/register', data);
+export const loginCustomer = (data) => apiClient.post('/auth/login', data);
+export const getMe = () => apiClient.get('/auth/me');
+export const logoutCustomer = () => apiClient.post('/auth/logout');
+export const getMyBoxes = () => apiClient.get('/auth/my-boxes');
 
 // Customers
 export const getCustomers = () => apiClient.get('/customers');

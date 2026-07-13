@@ -1,17 +1,19 @@
-from fastapi import FastAPI, APIRouter, HTTPException
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import List, Optional
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import qrcode
 import io
 import base64
+import bcrypt
+import jwt
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -21,11 +23,55 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
+JWT_SECRET = os.environ['JWT_SECRET']
+JWT_ALGORITHM = "HS256"
+
 # Create the main app without a prefix
 app = FastAPI()
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
+
+
+# ============== AUTH HELPERS ==============
+
+def hash_password(password: str) -> str:
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+
+def verify_password(plain: str, hashed: str) -> bool:
+    return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
+
+def create_access_token(user_id: str, email: str) -> str:
+    payload = {
+        "sub": user_id,
+        "email": email,
+        "exp": datetime.now(timezone.utc) + timedelta(days=7),
+        "type": "access"
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+async def get_current_customer(request: Request) -> dict:
+    token = request.cookies.get("access_token")
+    if not token:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]
+    if not token:
+        raise HTTPException(status_code=401, detail="Chưa đăng nhập")
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        if payload.get("type") != "access":
+            raise HTTPException(status_code=401, detail="Token không hợp lệ")
+        user = await db.customers.find_one({"id": payload["sub"]}, {"_id": 0})
+        if not user:
+            raise HTTPException(status_code=401, detail="Người dùng không tồn tại")
+        user.pop("password_hash", None)
+        return user
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token đã hết hạn")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Token không hợp lệ")
 
 
 # ============== MODELS ==============
@@ -38,6 +84,8 @@ class Customer(BaseModel):
     phone: str
     email: Optional[str] = None
     address: Optional[str] = None
+    default_pickup_address: Optional[str] = None
+    has_account: bool = False
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class CustomerCreate(BaseModel):
@@ -45,6 +93,19 @@ class CustomerCreate(BaseModel):
     phone: str
     email: Optional[str] = None
     address: Optional[str] = None
+
+
+class CustomerRegister(BaseModel):
+    name: str
+    phone: str
+    email: EmailStr
+    password: str
+    default_pickup_address: str
+    accept_terms: bool
+
+class CustomerLogin(BaseModel):
+    identifier: str  # email or phone
+    password: str
 
 
 class Shipper(BaseModel):
@@ -131,6 +192,145 @@ def generate_qr_code(data: str) -> str:
     img_base64 = base64.b64encode(buffer.getvalue()).decode()
     
     return f"data:image/png;base64,{img_base64}"
+
+
+# ============== CUSTOMER AUTH ENDPOINTS ==============
+
+@api_router.post("/auth/register")
+async def register_customer(data: CustomerRegister, response: Response):
+    if not data.accept_terms:
+        raise HTTPException(status_code=400, detail="Bạn phải đồng ý với điều khoản dịch vụ")
+    
+    if len(data.password) < 6:
+        raise HTTPException(status_code=400, detail="Mật khẩu phải có ít nhất 6 ký tự")
+    
+    email_lower = data.email.lower().strip()
+    phone = data.phone.strip()
+    
+    # Check if email or phone already registered
+    existing = await db.customers.find_one({
+        "$or": [
+            {"email": email_lower, "has_account": True},
+            {"phone": phone, "has_account": True}
+        ]
+    })
+    if existing:
+        raise HTTPException(status_code=400, detail="Email hoặc số điện thoại đã được đăng ký")
+    
+    now = datetime.now(timezone.utc)
+    customer_doc = {
+        "id": str(uuid.uuid4()),
+        "name": data.name.strip(),
+        "phone": phone,
+        "email": email_lower,
+        "password_hash": hash_password(data.password),
+        "default_pickup_address": data.default_pickup_address.strip(),
+        "address": data.default_pickup_address.strip(),
+        "has_account": True,
+        "accepted_terms_at": now.isoformat(),
+        "created_at": now.isoformat()
+    }
+    
+    await db.customers.insert_one(customer_doc)
+    
+    token = create_access_token(customer_doc["id"], email_lower)
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,
+        secure=True,
+        samesite="none",
+        max_age=7 * 24 * 3600,
+        path="/"
+    )
+    
+    return {
+        "success": True,
+        "message": "Đăng ký thành công",
+        "token": token,
+        "user": {
+            "id": customer_doc["id"],
+            "name": customer_doc["name"],
+            "phone": customer_doc["phone"],
+            "email": customer_doc["email"],
+            "default_pickup_address": customer_doc["default_pickup_address"]
+        }
+    }
+
+
+@api_router.post("/auth/login")
+async def login_customer(data: CustomerLogin, response: Response):
+    identifier = data.identifier.lower().strip()
+    
+    # Look up by email or phone
+    user = await db.customers.find_one({
+        "$or": [
+            {"email": identifier, "has_account": True},
+            {"phone": data.identifier.strip(), "has_account": True}
+        ]
+    }, {"_id": 0})
+    
+    if not user or not user.get("password_hash"):
+        raise HTTPException(status_code=401, detail="Email/SĐT hoặc mật khẩu không đúng")
+    
+    if not verify_password(data.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Email/SĐT hoặc mật khẩu không đúng")
+    
+    token = create_access_token(user["id"], user["email"])
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,
+        secure=True,
+        samesite="none",
+        max_age=7 * 24 * 3600,
+        path="/"
+    )
+    
+    return {
+        "success": True,
+        "message": "Đăng nhập thành công",
+        "token": token,
+        "user": {
+            "id": user["id"],
+            "name": user["name"],
+            "phone": user["phone"],
+            "email": user.get("email"),
+            "default_pickup_address": user.get("default_pickup_address")
+        }
+    }
+
+
+@api_router.get("/auth/me")
+async def get_me(current_user: dict = Depends(get_current_customer)):
+    return {
+        "id": current_user["id"],
+        "name": current_user["name"],
+        "phone": current_user["phone"],
+        "email": current_user.get("email"),
+        "default_pickup_address": current_user.get("default_pickup_address")
+    }
+
+
+@api_router.post("/auth/logout")
+async def logout(response: Response):
+    response.delete_cookie(key="access_token", path="/")
+    return {"success": True, "message": "Đăng xuất thành công"}
+
+
+@api_router.get("/auth/my-boxes")
+async def get_my_boxes(current_user: dict = Depends(get_current_customer)):
+    """Get all boxes belonging to the authenticated customer"""
+    boxes = await db.customers.find_one({"id": current_user["id"]}, {"_id": 0})
+    all_boxes = await db.boxes.find({"customer_id": current_user["id"]}, {"_id": 0}).to_list(1000)
+    
+    for box in all_boxes:
+        if isinstance(box.get('created_at'), str):
+            box['created_at'] = datetime.fromisoformat(box['created_at'])
+        if isinstance(box.get('last_updated'), str):
+            box['last_updated'] = datetime.fromisoformat(box['last_updated'])
+    
+    return all_boxes
 
 
 # ============== CUSTOMER ENDPOINTS ==============
@@ -422,13 +622,24 @@ async def root():
 # Include the router in the main app
 app.include_router(api_router)
 
+# CORS - allow credentials requires explicit origin
+cors_origins = os.environ.get('CORS_ORIGINS', '*').split(',')
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origin_regex=".*" if '*' in cors_origins else None,
+    allow_origins=cors_origins if '*' not in cors_origins else [],
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.on_event("startup")
+async def startup_indexes():
+    try:
+        await db.customers.create_index("email", sparse=True)
+        await db.customers.create_index("phone")
+    except Exception as e:
+        logging.warning(f"Index creation warning: {e}")
 
 # Configure logging
 logging.basicConfig(
