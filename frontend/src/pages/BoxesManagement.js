@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import MapView from '@/components/MapView';
 import LocationPicker from '@/components/LocationPicker';
 
@@ -150,100 +151,190 @@ const BoxesManagement = () => {
     ? boxes 
     : boxes.filter(box => box.status === filterStatus);
 
+  // Group boxes by status for tabs
+  const waitingBoxes = boxes.filter(b => b.status === 'WAITING_FOR_PICKUP');
+  const pickedUpBoxes = boxes.filter(b => b.status === 'PICKED_UP');
+  const inHubBoxes = boxes.filter(b => b.status === 'IN_HUB');
+  const deliveredBoxes = boxes.filter(b => b.status === 'DELIVERED');
+
+  // Render single box card (reusable)
+  const renderBoxCard = (box) => (
+    <Card key={box.box_id} className="hover:shadow-lg transition-shadow">
+      <CardHeader>
+        <div className="flex justify-between items-start">
+          <div>
+            <CardTitle className="text-lg">{box.box_id}</CardTitle>
+            <CardDescription>{box.customer_name}</CardDescription>
+          </div>
+          <Badge className={statusColors[box.status]}>
+            {statusLabels[box.status] || box.status}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <p className="text-xs text-gray-500">
+          Cập nhật: {new Date(box.last_updated).toLocaleString('vi-VN')}
+        </p>
+        {box.last_latitude && (
+          <p className="text-xs text-blue-600">
+            📍 {box.last_latitude.toFixed(4)}, {box.last_longitude.toFixed(4)}
+          </p>
+        )}
+        <div className="flex gap-2 flex-wrap">
+          <Button size="sm" variant="outline" onClick={() => handleViewQR(box)} data-testid={`view-qr-${box.box_id}`}>
+            🔲 QR
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => handleViewHistory(box)} data-testid={`view-history-${box.box_id}`}>
+            📜 Lịch Sử
+          </Button>
+          <Button 
+            size="sm" 
+            variant="outline" 
+            onClick={() => handleOpenLocation(box)} 
+            data-testid={`update-location-${box.box_id}`}
+            className={box.last_latitude ? 'bg-green-50 border-green-300 text-green-700 hover:bg-green-100' : 'bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100'}
+          >
+            📍 {box.last_latitude ? 'Đổi VT' : 'Set VT'}
+          </Button>
+          <Button 
+            size="sm" 
+            variant="outline" 
+            onClick={() => {
+              const link = `${window.location.origin}/track/${box.box_id}`;
+              navigator.clipboard.writeText(link);
+              alert(`Đã copy link cho khách hàng:\n${link}`);
+            }} 
+            data-testid={`copy-track-link-${box.box_id}`}
+          >
+            🔗 Link KH
+          </Button>
+          <Button size="sm" variant="destructive" onClick={() => handleDeleteBox(box.box_id)} data-testid={`delete-${box.box_id}`}>
+            Xóa
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  // Empty state for tab
+  const renderEmpty = (message) => (
+    <Card>
+      <CardContent className="pt-6 text-center text-gray-500">
+        <div className="text-4xl mb-2">📭</div>
+        <p>{message}</p>
+      </CardContent>
+    </Card>
+  );
+
   return (
     <div className="p-6 space-y-6" data-testid="boxes-management">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center flex-wrap gap-2">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">📦 Quản Lý Thùng Hàng</h1>
-          <p className="text-gray-600 mt-1">Tổng số: {boxes.length} thùng</p>
+          <p className="text-gray-600 mt-1">Tổng số: {boxes.length} thùng • 🏙️ Đà Nẵng</p>
         </div>
         <Button onClick={() => setShowCreateDialog(true)} data-testid="create-box-button">
           + Tạo Thùng Mới
         </Button>
       </div>
 
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-4">
-            <Label>Lọc theo trạng thái:</Label>
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-64" data-testid="filter-status">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả</SelectItem>
-                <SelectItem value="WAITING_FOR_PICKUP">Chờ Lấy</SelectItem>
-                <SelectItem value="PICKED_UP">Đã Lấy</SelectItem>
-                <SelectItem value="IN_HUB">Ở Hub</SelectItem>
-                <SelectItem value="DELIVERED">Đã Giao</SelectItem>
-              </SelectContent>
-            </Select>
+      {/* Tabs by Status - 4 sections */}
+      <Tabs defaultValue="WAITING_FOR_PICKUP" className="w-full" data-testid="status-tabs">
+        <TabsList className="w-full h-auto flex-wrap justify-start gap-1 bg-gray-100 p-2">
+          <TabsTrigger 
+            value="WAITING_FOR_PICKUP" 
+            className="flex-1 min-w-[140px] py-3 data-[state=active]:bg-yellow-100 data-[state=active]:text-yellow-900 data-[state=active]:border-yellow-400 data-[state=active]:border-2"
+            data-testid="tab-waiting"
+          >
+            <span className="flex flex-col items-center">
+              <span className="text-xl">⏳</span>
+              <span className="text-xs mt-1">Chờ Lấy</span>
+              <span className="text-lg font-bold">{waitingBoxes.length}</span>
+            </span>
+          </TabsTrigger>
+          <TabsTrigger 
+            value="PICKED_UP" 
+            className="flex-1 min-w-[140px] py-3 data-[state=active]:bg-blue-100 data-[state=active]:text-blue-900 data-[state=active]:border-blue-400 data-[state=active]:border-2"
+            data-testid="tab-picked-up"
+          >
+            <span className="flex flex-col items-center">
+              <span className="text-xl">🚚</span>
+              <span className="text-xs mt-1">Đã Lấy</span>
+              <span className="text-lg font-bold">{pickedUpBoxes.length}</span>
+            </span>
+          </TabsTrigger>
+          <TabsTrigger 
+            value="IN_HUB" 
+            className="flex-1 min-w-[140px] py-3 data-[state=active]:bg-purple-100 data-[state=active]:text-purple-900 data-[state=active]:border-purple-400 data-[state=active]:border-2"
+            data-testid="tab-in-hub"
+          >
+            <span className="flex flex-col items-center">
+              <span className="text-xl">🏢</span>
+              <span className="text-xs mt-1">Đang Ở Hub</span>
+              <span className="text-lg font-bold">{inHubBoxes.length}</span>
+            </span>
+          </TabsTrigger>
+          <TabsTrigger 
+            value="DELIVERED" 
+            className="flex-1 min-w-[140px] py-3 data-[state=active]:bg-green-100 data-[state=active]:text-green-900 data-[state=active]:border-green-400 data-[state=active]:border-2"
+            data-testid="tab-delivered"
+          >
+            <span className="flex flex-col items-center">
+              <span className="text-xl">✅</span>
+              <span className="text-xs mt-1">Đã Giao</span>
+              <span className="text-lg font-bold">{deliveredBoxes.length}</span>
+            </span>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="WAITING_FOR_PICKUP" className="mt-6">
+          <div className="mb-3 flex items-center gap-2">
+            <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300">⏳ Chờ Lấy</Badge>
+            <span className="text-sm text-gray-600">{waitingBoxes.length} thùng đang chờ shipper đến lấy</span>
           </div>
-        </CardContent>
-      </Card>
+          {waitingBoxes.length === 0 ? renderEmpty('Không có thùng nào đang chờ lấy') : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="boxes-list-waiting">
+              {waitingBoxes.map(renderBoxCard)}
+            </div>
+          )}
+        </TabsContent>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="boxes-list">
-        {filteredBoxes.map((box) => (
-          <Card key={box.box_id} className="hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-lg">{box.box_id}</CardTitle>
-                  <CardDescription>{box.customer_name}</CardDescription>
-                </div>
-                <Badge className={statusColors[box.status]}>
-                  {statusLabels[box.status] || box.status}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <p className="text-xs text-gray-500">
-                Cập nhật: {new Date(box.last_updated).toLocaleString('vi-VN')}
-              </p>
-              <div className="flex gap-2 flex-wrap">
-                <Button size="sm" variant="outline" onClick={() => handleViewQR(box)} data-testid={`view-qr-${box.box_id}`}>
-                  🔲 QR
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => handleViewHistory(box)} data-testid={`view-history-${box.box_id}`}>
-                  📜 Lịch Sử
-                </Button>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  onClick={() => handleOpenLocation(box)} 
-                  data-testid={`update-location-${box.box_id}`}
-                  className={box.last_latitude ? 'bg-green-50 border-green-300 text-green-700 hover:bg-green-100' : 'bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100'}
-                >
-                  📍 {box.last_latitude ? 'Đổi VT' : 'Set VT'}
-                </Button>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  onClick={() => {
-                    const link = `${window.location.origin}/track/${box.box_id}`;
-                    navigator.clipboard.writeText(link);
-                    alert(`Đã copy link cho khách hàng:\n${link}`);
-                  }} 
-                  data-testid={`copy-track-link-${box.box_id}`}
-                >
-                  🔗 Link KH
-                </Button>
-                <Button size="sm" variant="destructive" onClick={() => handleDeleteBox(box.box_id)} data-testid={`delete-${box.box_id}`}>
-                  Xóa
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+        <TabsContent value="PICKED_UP" className="mt-6">
+          <div className="mb-3 flex items-center gap-2">
+            <Badge className="bg-blue-100 text-blue-800 border-blue-300">🚚 Đã Lấy</Badge>
+            <span className="text-sm text-gray-600">{pickedUpBoxes.length} thùng đã được shipper lấy, đang trên đường</span>
+          </div>
+          {pickedUpBoxes.length === 0 ? renderEmpty('Không có thùng nào đã lấy') : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="boxes-list-picked-up">
+              {pickedUpBoxes.map(renderBoxCard)}
+            </div>
+          )}
+        </TabsContent>
 
-      {filteredBoxes.length === 0 && (
-        <Card>
-          <CardContent className="pt-6 text-center text-gray-500">
-            Không có thùng hàng nào
-          </CardContent>
-        </Card>
-      )}
+        <TabsContent value="IN_HUB" className="mt-6">
+          <div className="mb-3 flex items-center gap-2">
+            <Badge className="bg-purple-100 text-purple-800 border-purple-300">🏢 Đang Ở Hub</Badge>
+            <span className="text-sm text-gray-600">{inHubBoxes.length} thùng đang tập kết tại hub</span>
+          </div>
+          {inHubBoxes.length === 0 ? renderEmpty('Không có thùng nào đang ở hub') : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="boxes-list-in-hub">
+              {inHubBoxes.map(renderBoxCard)}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="DELIVERED" className="mt-6">
+          <div className="mb-3 flex items-center gap-2">
+            <Badge className="bg-green-100 text-green-800 border-green-300">✅ Đã Giao</Badge>
+            <span className="text-sm text-gray-600">{deliveredBoxes.length} thùng đã giao thành công</span>
+          </div>
+          {deliveredBoxes.length === 0 ? renderEmpty('Chưa có thùng nào được giao') : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="boxes-list-delivered">
+              {deliveredBoxes.map(renderBoxCard)}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent>
