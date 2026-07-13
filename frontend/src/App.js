@@ -8,6 +8,7 @@ import CustomersManagement from "@/pages/CustomersManagement";
 import ShippersManagement from "@/pages/ShippersManagement";
 import ShipperApp from "@/pages/ShipperApp";
 import TrackingPage from "@/pages/TrackingPage";
+import CustomerHub from "@/pages/CustomerHub";
 import CustomerRegister from "@/pages/CustomerRegister";
 import CustomerLogin from "@/pages/CustomerLogin";
 import CustomerDashboard from "@/pages/CustomerDashboard";
@@ -52,28 +53,13 @@ const LandingPage = () => {
           <p className="text-sm text-gray-500 mt-2">
             🏙️ Phục vụ khu vực Thành phố Đà Nẵng
           </p>
-
-          {!user && (
-            <div className="flex flex-col md:flex-row gap-3 justify-center mt-6">
-              <Link to="/customer/register">
-                <button className="w-full md:w-auto bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-6 py-3 rounded-lg font-medium shadow-md" data-testid="cta-register">
-                  ✨ Đăng Ký Khách Hàng
-                </button>
-              </Link>
-              <Link to="/customer/login">
-                <button className="w-full md:w-auto bg-white border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50 px-6 py-3 rounded-lg font-medium" data-testid="cta-login">
-                  🔐 Đăng Nhập
-                </button>
-              </Link>
-            </div>
-          )}
         </div>
 
         <div className="grid md:grid-cols-3 gap-6">
           <Link to="/admin" data-testid="goto-admin">
-            <div className="bg-white p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1 cursor-pointer border-2 border-transparent hover:border-blue-500">
+            <div className="bg-white p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1 cursor-pointer border-2 border-transparent hover:border-blue-500 h-full">
               <div className="text-6xl mb-4">💼</div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Admin Dashboard</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Doanh Nghiệp</h2>
               <p className="text-gray-600 mb-4">
                 Quản lý thùng hàng, khách hàng, shippers và theo dõi thống kê tổng quan
               </p>
@@ -84,9 +70,9 @@ const LandingPage = () => {
           </Link>
 
           <Link to="/shipper" data-testid="goto-shipper">
-            <div className="bg-white p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1 cursor-pointer border-2 border-transparent hover:border-pink-500">
-              <div className="text-6xl mb-4">📱</div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">App Shipper</h2>
+            <div className="bg-white p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1 cursor-pointer border-2 border-transparent hover:border-pink-500 h-full">
+              <div className="text-6xl mb-4">🚚</div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Shipper</h2>
               <p className="text-gray-600 mb-4">
                 Quét mã QR và cập nhật trạng thái giao hàng nhanh chóng
               </p>
@@ -96,15 +82,15 @@ const LandingPage = () => {
             </div>
           </Link>
 
-          <Link to="/track" data-testid="goto-tracking">
-            <div className="bg-white p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1 cursor-pointer border-2 border-transparent hover:border-green-500">
-              <div className="text-6xl mb-4">🔍</div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Tra Cứu Đơn Hàng</h2>
+          <Link to="/customer" data-testid="goto-customer">
+            <div className="bg-white p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1 cursor-pointer border-2 border-transparent hover:border-green-500 h-full">
+              <div className="text-6xl mb-4">👤</div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Khách Hàng</h2>
               <p className="text-gray-600 mb-4">
-                Khách hàng nhập mã thùng để theo dõi vị trí và trạng thái giao hàng
+                Tra cứu đơn hàng, đăng ký/đăng nhập & tự tạo đơn lấy hàng
               </p>
               <span className="inline-block bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-lg font-medium">
-                Theo Dõi Đơn →
+                Vào Khu Khách Hàng →
               </span>
             </div>
           </Link>
@@ -131,6 +117,7 @@ function App() {
             <Route path="/track/:boxId" element={<TrackingPage />} />
 
             {/* Customer auth */}
+            <Route path="/customer" element={<CustomerHub />} />
             <Route path="/customer/register" element={<CustomerRegister />} />
             <Route path="/customer/login" element={<CustomerLogin />} />
             <Route path="/customer/dashboard" element={<RequireAuth><CustomerDashboard /></RequireAuth>} />
