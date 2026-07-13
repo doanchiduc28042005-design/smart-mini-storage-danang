@@ -134,6 +134,12 @@ class Box(BaseModel):
     qr_code_data: Optional[str] = None
     last_latitude: Optional[float] = None
     last_longitude: Optional[float] = None
+    # Customer-created order fields
+    pickup_address: Optional[str] = None
+    pickup_time: Optional[str] = None  # ISO datetime string
+    item_description: Optional[str] = None
+    notes: Optional[str] = None
+    created_by: str = "admin"  # 'admin' or 'customer'
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     last_updated: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -141,6 +147,14 @@ class BoxCreate(BaseModel):
     customer_id: str
     customer_name: str
     box_id: Optional[str] = None  # If not provided, will auto-generate
+
+
+class CustomerOrderCreate(BaseModel):
+    item_description: str
+    pickup_time: str  # ISO datetime string
+    pickup_address: Optional[str] = None  # Fallback to customer default
+    notes: Optional[str] = None
+    accept_no_prohibited: bool
 
 
 class TrackingHistory(BaseModel):
@@ -321,7 +335,6 @@ async def logout(response: Response):
 @api_router.get("/auth/my-boxes")
 async def get_my_boxes(current_user: dict = Depends(get_current_customer)):
     """Get all boxes belonging to the authenticated customer"""
-    boxes = await db.customers.find_one({"id": current_user["id"]}, {"_id": 0})
     all_boxes = await db.boxes.find({"customer_id": current_user["id"]}, {"_id": 0}).to_list(1000)
     
     for box in all_boxes:
@@ -330,7 +343,53 @@ async def get_my_boxes(current_user: dict = Depends(get_current_customer)):
         if isinstance(box.get('last_updated'), str):
             box['last_updated'] = datetime.fromisoformat(box['last_updated'])
     
+    # Sort newest first
+    all_boxes.sort(key=lambda b: b.get('created_at', datetime.min.replace(tzinfo=timezone.utc)), reverse=True)
     return all_boxes
+
+
+@api_router.post("/auth/create-order")
+async def customer_create_order(data: CustomerOrderCreate, current_user: dict = Depends(get_current_customer)):
+    """Customer self-creates a new pickup order"""
+    if not data.accept_no_prohibited:
+        raise HTTPException(status_code=400, detail="Bạn phải xác nhận không gửi hàng cấm")
+    
+    if not data.item_description.strip():
+        raise HTTPException(status_code=400, detail="Vui lòng mô tả hàng hóa")
+    
+    pickup_address = (data.pickup_address or current_user.get("default_pickup_address") or current_user.get("address") or "").strip()
+    if not pickup_address:
+        raise HTTPException(status_code=400, detail="Vui lòng nhập địa chỉ lấy hàng")
+    
+    box_id = f"BOX-{str(uuid.uuid4())[:8].upper()}"
+    qr_code_data = generate_qr_code(box_id)
+    
+    now = datetime.now(timezone.utc)
+    box_doc = {
+        "id": str(uuid.uuid4()),
+        "box_id": box_id,
+        "customer_id": current_user["id"],
+        "customer_name": current_user["name"],
+        "status": "WAITING_FOR_PICKUP",
+        "qr_code_data": qr_code_data,
+        "pickup_address": pickup_address,
+        "pickup_time": data.pickup_time,
+        "item_description": data.item_description.strip(),
+        "notes": data.notes.strip() if data.notes else None,
+        "created_by": "customer",
+        "created_at": now.isoformat(),
+        "last_updated": now.isoformat(),
+    }
+    
+    await db.boxes.insert_one(box_doc)
+    
+    # Return WITHOUT _id for JSON serialization
+    box_doc.pop("_id", None)
+    return {
+        "success": True,
+        "message": f"Đã tạo đơn hàng {box_id} thành công! Shipper sẽ đến lấy hàng theo lịch hẹn.",
+        "box": box_doc
+    }
 
 
 # ============== CUSTOMER ENDPOINTS ==============

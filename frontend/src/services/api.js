@@ -34,6 +34,7 @@ export const loginCustomer = (data) => apiClient.post('/auth/login', data);
 export const getMe = () => apiClient.get('/auth/me');
 export const logoutCustomer = () => apiClient.post('/auth/logout');
 export const getMyBoxes = () => apiClient.get('/auth/my-boxes');
+export const createMyOrder = (data) => apiClient.post('/auth/create-order', data);
 
 // Customers
 export const getCustomers = () => apiClient.get('/customers');

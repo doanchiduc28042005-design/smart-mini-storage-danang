@@ -165,6 +165,11 @@ const BoxesManagement = () => {
           <div>
             <CardTitle className="text-lg">{box.box_id}</CardTitle>
             <CardDescription>{box.customer_name}</CardDescription>
+            {box.created_by === 'customer' && (
+              <Badge className="mt-1 bg-indigo-100 text-indigo-800 border-indigo-300 text-xs">
+                🆕 KH tự tạo
+              </Badge>
+            )}
           </div>
           <Badge className={statusColors[box.status]}>
             {statusLabels[box.status] || box.status}
@@ -172,6 +177,19 @@ const BoxesManagement = () => {
         </div>
       </CardHeader>
       <CardContent className="space-y-2">
+        {box.item_description && (
+          <p className="text-xs text-gray-700 bg-gray-50 p-2 rounded">
+            📦 {box.item_description}
+          </p>
+        )}
+        {box.pickup_time && (
+          <p className="text-xs text-indigo-600">
+            🕐 Hẹn lấy: {new Date(box.pickup_time).toLocaleString('vi-VN')}
+          </p>
+        )}
+        {box.pickup_address && (
+          <p className="text-xs text-gray-600">📍 {box.pickup_address}</p>
+        )}
         <p className="text-xs text-gray-500">
           Cập nhật: {new Date(box.last_updated).toLocaleString('vi-VN')}
         </p>
