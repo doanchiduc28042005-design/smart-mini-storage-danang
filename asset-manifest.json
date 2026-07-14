@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/smart-mini-storage-danang/static/css/main.bf5aed35.css",
+    "main.js": "/smart-mini-storage-danang/static/js/main.6a5d2c8f.js",
+    "index.html": "/smart-mini-storage-danang/index.html",
+    "main.bf5aed35.css.map": "/smart-mini-storage-danang/static/css/main.bf5aed35.css.map",
+    "main.6a5d2c8f.js.map": "/smart-mini-storage-danang/static/js/main.6a5d2c8f.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.bf5aed35.css",
+    "static/js/main.6a5d2c8f.js"
+  ]
+}
