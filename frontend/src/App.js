@@ -107,7 +107,7 @@ const LandingPage = () => {
 function App() {
   return (
     <div className="App">
-      <BrowserRouter>
+      <BrowserRouter basename={process.env.PUBLIC_URL}>
         <AuthProvider>
           <Routes>
             <Route path="/" element={<LandingPage />} />
