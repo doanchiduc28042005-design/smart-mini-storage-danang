@@ -6,6 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { Search, Plus, Edit, Trash2 } from 'lucide-react';
 
 const EmployeesManagement = () => {
@@ -18,7 +20,7 @@ const EmployeesManagement = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [currentEmployeeId, setCurrentEmployeeId] = useState(null);
   
-  const [form, setForm] = useState({ employee_code: '', name: '', email: '', phone: '', address: '' });
+  const [form, setForm] = useState({ employee_code: '', name: '', email: '', phone: '', address: '', role: 'Nhân Viên' });
 
   useEffect(() => {
     loadEmployees();
@@ -51,7 +53,7 @@ const EmployeesManagement = () => {
 
   const handleOpenAdd = () => {
     setIsEditing(false);
-    setForm({ employee_code: '', name: '', email: '', phone: '', address: '' });
+    setForm({ employee_code: '', name: '', email: '', phone: '', address: '', role: 'Nhân Viên' });
     setShowAddEditDialog(true);
   };
 
@@ -63,7 +65,8 @@ const EmployeesManagement = () => {
       name: emp.name, 
       email: emp.email, 
       phone: emp.phone, 
-      address: emp.address 
+      address: emp.address,
+      role: emp.role || 'Nhân Viên'
     });
     setShowAddEditDialog(true);
   };
@@ -138,6 +141,7 @@ const EmployeesManagement = () => {
                 <TableRow>
                   <TableHead className="font-semibold">Mã NV</TableHead>
                   <TableHead className="font-semibold">Họ và Tên</TableHead>
+                  <TableHead className="font-semibold">Vai Trò</TableHead>
                   <TableHead className="font-semibold">Email (Gmail)</TableHead>
                   <TableHead className="font-semibold">Số Điện Thoại</TableHead>
                   <TableHead className="font-semibold">Địa Chỉ Nhà</TableHead>
@@ -150,6 +154,15 @@ const EmployeesManagement = () => {
                     <TableRow key={emp.id}>
                       <TableCell className="font-medium">{emp.employee_code}</TableCell>
                       <TableCell>{emp.name}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={
+                          emp.role === 'Admin' ? 'bg-red-50 text-red-700 border-red-200' :
+                          emp.role === 'Quản Lý' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                          'bg-gray-50 text-gray-700 border-gray-200'
+                        }>
+                          {emp.role || 'Nhân Viên'}
+                        </Badge>
+                      </TableCell>
                       <TableCell>{emp.email}</TableCell>
                       <TableCell>{emp.phone}</TableCell>
                       <TableCell>{emp.address}</TableCell>
@@ -234,6 +247,19 @@ const EmployeesManagement = () => {
                 onChange={(e) => setForm({...form, address: e.target.value})}
                 placeholder="VD: 123 Đường ABC, Q1, HCM"
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Vai Trò *</Label>
+              <Select value={form.role} onValueChange={(value) => setForm({...form, role: value})}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn vai trò..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Admin">Admin</SelectItem>
+                  <SelectItem value="Quản Lý">Quản Lý</SelectItem>
+                  <SelectItem value="Nhân Viên">Nhân Viên</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <DialogFooter className="mt-6">
               <Button type="button" variant="outline" onClick={() => setShowAddEditDialog(false)}>

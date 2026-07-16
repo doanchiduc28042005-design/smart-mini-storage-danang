@@ -195,6 +195,7 @@ class Employee(BaseModel):
     email: str
     phone: str
     address: str
+    role: str = "Nhân Viên" # Admin, Quản Lý, Nhân Viên
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class EmployeeCreate(BaseModel):
@@ -203,6 +204,7 @@ class EmployeeCreate(BaseModel):
     email: str
     phone: str
     address: str
+    role: str = "Nhân Viên"
 
 class EmployeeUpdate(BaseModel):
     employee_code: Optional[str] = None
@@ -210,6 +212,7 @@ class EmployeeUpdate(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     address: Optional[str] = None
+    role: Optional[str] = None
 
 
 class Box(BaseModel):
