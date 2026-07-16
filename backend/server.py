@@ -53,6 +53,43 @@ def send_shipper_approval_email(to_email: str, shipper_code: str, setup_link: st
     except Exception as e:
         logging.error(f"Failed to send email to {to_email}: {e}")
 
+def send_shipper_rejection_email(to_email: str, reason: str):
+    smtp_email = os.environ.get('SMTP_EMAIL')
+    smtp_password = os.environ.get('SMTP_PASSWORD')
+    
+    if not smtp_email or not smtp_password:
+        logging.warning("SMTP configuration missing. Cannot send email.")
+        return
+        
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = f"Smart Mini Storage <{smtp_email}>"
+        msg['To'] = to_email
+        msg['Subject'] = "Hồ sơ đăng ký Shipper không được phê duyệt"
+        
+        body = f"""
+        Xin chào,
+        
+        Chúng tôi rất tiếc phải thông báo rằng hồ sơ đăng ký làm đối tác giao hàng (Shipper) của bạn tại Smart Mini Storage không được thông qua.
+        
+        Lý do từ chối:
+        {reason}
+        
+        Nếu có thắc mắc, vui lòng phản hồi qua email này.
+        
+        Trân trọng,
+        Đội ngũ Smart Mini Storage
+        """
+        msg.attach(MIMEText(body, 'plain'))
+        
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(smtp_email, smtp_password)
+        server.send_message(msg)
+        server.quit()
+    except Exception as e:
+        logging.error(f"Failed to send rejection email to {to_email}: {e}")
+
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
@@ -184,6 +221,9 @@ class ShipperSetupPassword(BaseModel):
 class ShipperLogin(BaseModel):
     shipper_code: str
     password: str
+
+class ShipperReject(BaseModel):
+    reason: str
 
 
 class Employee(BaseModel):
@@ -563,6 +603,24 @@ async def approve_shipper(shipper_id: str, request: Request):
     send_shipper_approval_email(shipper['email'], shipper_code, setup_link)
     
     return {"message": "Đã duyệt thành công và gửi email", "shipper_code": shipper_code}
+
+@api_router.put("/shippers/{shipper_id}/reject")
+async def reject_shipper(shipper_id: str, input: ShipperReject):
+    shipper = await db.shippers.find_one({"id": shipper_id})
+    if not shipper:
+        raise HTTPException(status_code=404, detail="Shipper không tồn tại")
+    if shipper.get("registration_status") == "approved":
+        raise HTTPException(status_code=400, detail="Không thể từ chối shipper đã được duyệt")
+        
+    await db.shippers.update_one(
+        {"id": shipper_id},
+        {"$set": {"registration_status": "rejected", "rejection_reason": input.reason}}
+    )
+    
+    # Send email
+    send_shipper_rejection_email(shipper['email'], input.reason)
+    
+    return {"message": "Đã từ chối hồ sơ và gửi email thông báo"}
 
 @api_router.post("/shippers/setup-password")
 async def setup_shipper_password(input: ShipperSetupPassword):
