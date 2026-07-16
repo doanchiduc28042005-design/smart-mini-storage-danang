@@ -14,6 +14,44 @@ import io
 import base64
 import bcrypt
 import jwt
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+def send_shipper_approval_email(to_email: str, shipper_code: str, setup_link: str):
+    smtp_email = os.environ.get('SMTP_EMAIL')
+    smtp_password = os.environ.get('SMTP_PASSWORD')
+    
+    if not smtp_email or not smtp_password:
+        logging.warning("SMTP configuration missing. Cannot send email.")
+        return
+        
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = f"Smart Mini Storage <{smtp_email}>"
+        msg['To'] = to_email
+        msg['Subject'] = "Hồ sơ Shipper của bạn đã được duyệt"
+        
+        body = f"""
+        Chúc mừng bạn đã trở thành Shipper của Smart Mini Storage!
+        
+        Mã Shipper của bạn là: {shipper_code}
+        
+        Vui lòng truy cập đường link sau để thiết lập mật khẩu đăng nhập:
+        {setup_link}
+        
+        Trân trọng,
+        Đội ngũ Smart Mini Storage
+        """
+        msg.attach(MIMEText(body, 'plain'))
+        
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(smtp_email, smtp_password)
+        server.send_message(msg)
+        server.quit()
+    except Exception as e:
+        logging.error(f"Failed to send email to {to_email}: {e}")
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -51,7 +89,7 @@ def create_access_token(user_id: str, email: str) -> str:
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
-async def get_current_customer(request: Request) -> dict:
+async def get_current_user(request: Request) -> dict:
     token = request.cookies.get("access_token")
     if not token:
         auth_header = request.headers.get("Authorization", "")
@@ -61,11 +99,20 @@ async def get_current_customer(request: Request) -> dict:
         raise HTTPException(status_code=401, detail="Chưa đăng nhập")
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        if payload.get("role") == "shipper":
+            user = await db.shippers.find_one({"id": payload["sub"]}, {"_id": 0})
+            if not user:
+                raise HTTPException(status_code=401, detail="Shipper không tồn tại")
+            user["role"] = "shipper"
+            user.pop("password_hash", None)
+            return user
+            
         if payload.get("type") != "access":
             raise HTTPException(status_code=401, detail="Token không hợp lệ")
         user = await db.customers.find_one({"id": payload["sub"]}, {"_id": 0})
         if not user:
             raise HTTPException(status_code=401, detail="Người dùng không tồn tại")
+        user["role"] = "customer"
         user.pop("password_hash", None)
         return user
     except jwt.ExpiredSignatureError:
@@ -114,13 +161,29 @@ class Shipper(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
     phone: str
+    email: str = ""
+    cccd: str = ""
+    license_photo: str = "" # base64
+    shipper_code: str = ""
+    password_hash: str = ""
     status: str = "active"  # active, inactive
+    registration_status: str = "pending" # pending, approved, rejected
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class ShipperCreate(BaseModel):
     name: str
     phone: str
-    status: str = "active"
+    email: str
+    cccd: str
+    license_photo: str
+
+class ShipperSetupPassword(BaseModel):
+    shipper_code: str
+    password: str
+
+class ShipperLogin(BaseModel):
+    shipper_code: str
+    password: str
 
 
 class Employee(BaseModel):
@@ -342,13 +405,23 @@ async def login_customer(data: CustomerLogin, response: Response):
 
 
 @api_router.get("/auth/me")
-async def get_me(current_user: dict = Depends(get_current_customer)):
+async def get_me(current_user: dict = Depends(get_current_user)):
+    if current_user.get("role") == "shipper":
+        return {
+            "id": current_user["id"],
+            "name": current_user["name"],
+            "phone": current_user["phone"],
+            "email": current_user.get("email"),
+            "role": "shipper",
+            "shipper_code": current_user.get("shipper_code")
+        }
     return {
         "id": current_user["id"],
         "name": current_user["name"],
         "phone": current_user["phone"],
         "email": current_user.get("email"),
-        "default_pickup_address": current_user.get("default_pickup_address")
+        "default_pickup_address": current_user.get("default_pickup_address"),
+        "role": "customer"
     }
 
 
@@ -359,7 +432,7 @@ async def logout(response: Response):
 
 
 @api_router.get("/auth/my-boxes")
-async def get_my_boxes(current_user: dict = Depends(get_current_customer)):
+async def get_my_boxes(current_user: dict = Depends(get_current_user)):
     """Get all boxes belonging to the authenticated customer"""
     all_boxes = await db.boxes.find({"customer_id": current_user["id"]}, {"_id": 0}).to_list(1000)
     
@@ -375,7 +448,7 @@ async def get_my_boxes(current_user: dict = Depends(get_current_customer)):
 
 
 @api_router.post("/auth/create-order")
-async def customer_create_order(data: CustomerOrderCreate, current_user: dict = Depends(get_current_customer)):
+async def customer_create_order(data: CustomerOrderCreate, current_user: dict = Depends(get_current_user)):
     """Customer self-creates a new pickup order"""
     if not data.accept_no_prohibited:
         raise HTTPException(status_code=400, detail="Bạn phải xác nhận không gửi hàng cấm")
@@ -453,14 +526,81 @@ async def get_customer(customer_id: str):
 
 # ============== SHIPPER ENDPOINTS ==============
 
-@api_router.post("/shippers", response_model=Shipper)
-async def create_shipper(input: ShipperCreate):
+@api_router.post("/shippers/register", response_model=Shipper)
+async def register_shipper(input: ShipperCreate):
     shipper = Shipper(**input.model_dump())
+    shipper.registration_status = "pending"
     doc = shipper.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
     
     await db.shippers.insert_one(doc)
     return shipper
+
+@api_router.put("/shippers/{shipper_id}/approve")
+async def approve_shipper(shipper_id: str, request: Request):
+    # Retrieve the shipper
+    shipper = await db.shippers.find_one({"id": shipper_id})
+    if not shipper:
+        raise HTTPException(status_code=404, detail="Shipper không tồn tại")
+    if shipper.get("registration_status") == "approved":
+        raise HTTPException(status_code=400, detail="Shipper đã được duyệt")
+        
+    # Generate Shipper Code (SP + 4 digits)
+    count = await db.shippers.count_documents({"registration_status": "approved"})
+    shipper_code = f"SP{(count + 1):04d}"
+    
+    await db.shippers.update_one(
+        {"id": shipper_id},
+        {"$set": {"registration_status": "approved", "shipper_code": shipper_code}}
+    )
+    
+    # Send email
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://doanchiduc28042005-design.github.io/smart-mini-storage-danang')
+    setup_link = f"{frontend_url}/shipper/setup-password"
+    send_shipper_approval_email(shipper['email'], shipper_code, setup_link)
+    
+    return {"message": "Đã duyệt thành công và gửi email", "shipper_code": shipper_code}
+
+@api_router.post("/shippers/setup-password")
+async def setup_shipper_password(input: ShipperSetupPassword):
+    shipper = await db.shippers.find_one({"shipper_code": input.shipper_code})
+    if not shipper:
+        raise HTTPException(status_code=404, detail="Mã Shipper không hợp lệ")
+    if shipper.get("password_hash"):
+        raise HTTPException(status_code=400, detail="Tài khoản này đã có mật khẩu")
+        
+    pwd_hash = hash_password(input.password)
+    await db.shippers.update_one(
+        {"shipper_code": input.shipper_code},
+        {"$set": {"password_hash": pwd_hash}}
+    )
+    return {"message": "Tạo mật khẩu thành công"}
+
+@api_router.post("/shippers/login")
+async def login_shipper(input: ShipperLogin):
+    shipper = await db.shippers.find_one({"shipper_code": input.shipper_code})
+    if not shipper or not shipper.get("password_hash"):
+        raise HTTPException(status_code=401, detail="Sai mã Shipper hoặc mật khẩu")
+        
+    if not bcrypt.checkpw(input.password.encode('utf-8'), shipper['password_hash'].encode('utf-8')):
+        raise HTTPException(status_code=401, detail="Sai mã Shipper hoặc mật khẩu")
+        
+    token_payload = {
+        "sub": shipper['id'],
+        "role": "shipper",
+        "shipper_code": shipper['shipper_code'],
+        "exp": datetime.now(timezone.utc) + timedelta(days=7)
+    }
+    token = jwt.encode(token_payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    
+    shipper_dict = shipper.copy()
+    if isinstance(shipper_dict.get('created_at'), str):
+        shipper_dict['created_at'] = datetime.fromisoformat(shipper_dict['created_at'])
+    
+    shipper_dict.pop('_id', None)
+    shipper_dict.pop('password_hash', None)
+        
+    return {"token": token, "shipper": shipper_dict}
 
 @api_router.get("/shippers", response_model=List[Shipper])
 async def get_shippers():
