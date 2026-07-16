@@ -123,6 +123,32 @@ class ShipperCreate(BaseModel):
     status: str = "active"
 
 
+class Employee(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    employee_code: str
+    name: str
+    email: str
+    phone: str
+    address: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class EmployeeCreate(BaseModel):
+    employee_code: str
+    name: str
+    email: str
+    phone: str
+    address: str
+
+class EmployeeUpdate(BaseModel):
+    employee_code: Optional[str] = None
+    name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+
+
 class Box(BaseModel):
     model_config = ConfigDict(extra="ignore")
     
@@ -456,6 +482,55 @@ async def get_shipper(shipper_id: str):
         shipper['created_at'] = datetime.fromisoformat(shipper['created_at'])
     
     return shipper
+
+
+# ============== EMPLOYEE ENDPOINTS ==============
+
+@api_router.post("/employees", response_model=Employee)
+async def create_employee(input: EmployeeCreate):
+    # Check if employee code already exists
+    existing = await db.employees.find_one({"employee_code": input.employee_code})
+    if existing:
+        raise HTTPException(status_code=400, detail="Mã nhân viên đã tồn tại")
+        
+    employee = Employee(**input.model_dump())
+    doc = employee.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    
+    await db.employees.insert_one(doc)
+    return employee
+
+@api_router.get("/employees", response_model=List[Employee])
+async def get_employees():
+    employees = await db.employees.find({}, {"_id": 0}).to_list(1000)
+    for emp in employees:
+        if isinstance(emp.get('created_at'), str):
+            emp['created_at'] = datetime.fromisoformat(emp['created_at'])
+    return employees
+
+@api_router.put("/employees/{employee_id}", response_model=Employee)
+async def update_employee(employee_id: str, input: EmployeeUpdate):
+    update_data = {k: v for k, v in input.model_dump().items() if v is not None}
+    
+    if update_data:
+        result = await db.employees.update_one(
+            {"id": employee_id},
+            {"$set": update_data}
+        )
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Nhân viên không tồn tại")
+            
+    employee = await db.employees.find_one({"id": employee_id}, {"_id": 0})
+    if employee and isinstance(employee.get('created_at'), str):
+        employee['created_at'] = datetime.fromisoformat(employee['created_at'])
+    return employee
+
+@api_router.delete("/employees/{employee_id}")
+async def delete_employee(employee_id: str):
+    result = await db.employees.delete_one({"id": employee_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Nhân viên không tồn tại")
+    return {"message": "Đã xoá nhân viên thành công"}
 
 
 # ============== BOX ENDPOINTS ==============
