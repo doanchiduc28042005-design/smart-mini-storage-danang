@@ -6,6 +6,7 @@ import AdminDashboard from "@/pages/AdminDashboard";
 import BoxesManagement from "@/pages/BoxesManagement";
 import CustomersManagement from "@/pages/CustomersManagement";
 import ShippersManagement from "@/pages/ShippersManagement";
+import EmployeesManagement from "@/pages/EmployeesManagement";
 import ShipperApp from "@/pages/ShipperApp";
 import TrackingPage from "@/pages/TrackingPage";
 import CustomerHub from "@/pages/CustomerHub";
@@ -127,6 +128,7 @@ function App() {
             <Route path="/admin/boxes" element={<AdminLayout><BoxesManagement /></AdminLayout>} />
             <Route path="/admin/customers" element={<AdminLayout><CustomersManagement /></AdminLayout>} />
             <Route path="/admin/shippers" element={<AdminLayout><ShippersManagement /></AdminLayout>} />
+            <Route path="/admin/employees" element={<AdminLayout><EmployeesManagement /></AdminLayout>} />
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

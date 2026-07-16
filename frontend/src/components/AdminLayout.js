@@ -9,6 +9,7 @@ const AdminLayout = ({ children }) => {
     { path: '/admin/boxes', label: '📦 Thùng Hàng', testId: 'nav-boxes' },
     { path: '/admin/customers', label: '👤 Khách Hàng', testId: 'nav-customers' },
     { path: '/admin/shippers', label: '🚚 Shippers', testId: 'nav-shippers' },
+    { path: '/admin/employees', label: '💼 Nhân Viên', testId: 'nav-employees' },
   ];
 
   const isActive = (path) => {

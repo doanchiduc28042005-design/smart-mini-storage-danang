@@ -41,6 +41,12 @@ export const getCustomers = () => apiClient.get('/customers');
 export const createCustomer = (data) => apiClient.post('/customers', data);
 export const getCustomer = (id) => apiClient.get(`/customers/${id}`);
 
+// Employees
+export const getEmployees = () => apiClient.get('/employees');
+export const createEmployee = (data) => apiClient.post('/employees', data);
+export const updateEmployee = (id, data) => apiClient.put(`/employees/${id}`, data);
+export const deleteEmployee = (id) => apiClient.delete(`/employees/${id}`);
+
 // Shippers
 export const getShippers = () => apiClient.get('/shippers');
 export const createShipper = (data) => apiClient.post('/shippers', data);
