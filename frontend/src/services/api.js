@@ -49,8 +49,11 @@ export const deleteEmployee = (id) => apiClient.delete(`/employees/${id}`);
 
 // Shippers
 export const getShippers = () => apiClient.get('/shippers');
-export const createShipper = (data) => apiClient.post('/shippers', data);
 export const getShipper = (id) => apiClient.get(`/shippers/${id}`);
+export const registerShipper = (data) => apiClient.post('/shippers/register', data);
+export const approveShipper = (id) => apiClient.put(`/shippers/${id}/approve`);
+export const setupShipperPassword = (data) => apiClient.post('/shippers/setup-password', data);
+export const loginShipper = (data) => apiClient.post('/shippers/login', data);
 
 // Boxes
 export const getBoxes = (status) => apiClient.get('/boxes', { params: { status } });

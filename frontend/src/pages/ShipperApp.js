@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { getShippers, scanQR, getBox } from '@/services/api';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
+import { scanQR, getBox } from '@/services/api';
 import QRScanner from '@/components/QRScanner';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -17,25 +19,33 @@ const statusLabels = {
 };
 
 const ShipperApp = () => {
+  const { user, loading: authLoading, logout } = useAuth();
+  const navigate = useNavigate();
+
   const [isScanning, setIsScanning] = useState(false);
   const [scannedBoxId, setScannedBoxId] = useState('');
   const [boxInfo, setBoxInfo] = useState(null);
-  const [shippers, setShippers] = useState([]);
-  const [selectedShipper, setSelectedShipper] = useState(() => localStorage.getItem('selectedShipper') || '');
   const [status, setStatus] = useState('');
   const [notes, setNotes] = useState('');
   const [alert, setAlert] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
   const [location, setLocation] = useState(null);
-  const [locationStatus, setLocationStatus] = useState('idle'); // idle, loading, success, error, denied
+  const [locationStatus, setLocationStatus] = useState('idle');
   const [locationError, setLocationError] = useState('');
   const [showGpsHelp, setShowGpsHelp] = useState(false);
 
   useEffect(() => {
-    loadShippers();
-    // Check permission state without prompting
-    checkLocationPermission();
-  }, []);
+    if (!authLoading && (!user || user.role !== 'shipper')) {
+      navigate('/shipper/login');
+    }
+  }, [user, authLoading, navigate]);
+
+  useEffect(() => {
+    if (user && user.role === 'shipper') {
+      checkLocationPermission();
+    }
+  }, [user]);
 
   const checkLocationPermission = async () => {
     if (!navigator.geolocation) {
@@ -43,20 +53,15 @@ const ShipperApp = () => {
       setLocationError('Trình duyệt không hỗ trợ GPS');
       return;
     }
-    // Try Permissions API to check state
     if (navigator.permissions && navigator.permissions.query) {
       try {
         const result = await navigator.permissions.query({ name: 'geolocation' });
         if (result.state === 'granted') {
-          // Already granted, can request silently
           requestLocation();
         } else if (result.state === 'denied') {
           setLocationStatus('denied');
         }
-        // 'prompt' state -> show button, user must click to grant
-      } catch (e) {
-        // Permissions API not available, just leave idle
-      }
+      } catch (e) {}
     }
   };
 
@@ -79,8 +84,6 @@ const ShipperApp = () => {
     };
 
     const onError = (err) => {
-      console.warn('Geolocation error:', err);
-      // err.code 1 = PERMISSION_DENIED
       if (err.code === 1) {
         setLocationStatus('denied');
         setLocationError('Bạn đã từ chối quyền GPS. Vui lòng mở Cài đặt để bật lại.');
@@ -96,12 +99,10 @@ const ShipperApp = () => {
       }
     };
 
-    // Try with high accuracy first, fallback to low if fails
     navigator.geolocation.getCurrentPosition(
       onSuccess,
       (err) => {
         if (err.code === 3) {
-          // Timeout - try again with lower accuracy
           navigator.geolocation.getCurrentPosition(
             onSuccess,
             onError,
@@ -115,27 +116,11 @@ const ShipperApp = () => {
     );
   };
 
-  useEffect(() => {
-    if (selectedShipper) {
-      localStorage.setItem('selectedShipper', selectedShipper);
-    }
-  }, [selectedShipper]);
-
-  const loadShippers = async () => {
-    try {
-      const response = await getShippers();
-      setShippers(response.data);
-    } catch (error) {
-      console.error('Error loading shippers:', error);
-    }
-  };
-
   const handleScan = async (boxId) => {
     setScannedBoxId(boxId);
     setIsScanning(false);
     setAlert(null);
     
-    // Try to load box info
     try {
       const response = await getBox(boxId);
       setBoxInfo(response.data);
@@ -149,7 +134,7 @@ const ShipperApp = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!scannedBoxId || !selectedShipper || !status) {
+    if (!scannedBoxId || !status) {
       setAlert({ type: 'error', message: 'Vui lòng điền đầy đủ thông tin!' });
       return;
     }
@@ -157,7 +142,6 @@ const ShipperApp = () => {
     setIsSubmitting(true);
 
     try {
-      // Re-get location at submit time (more accurate)
       let currentLocation = location;
       if (navigator.geolocation && locationStatus !== 'error') {
         try {
@@ -169,14 +153,12 @@ const ShipperApp = () => {
             );
           });
           setLocation(currentLocation);
-        } catch (e) {
-          // Use previously captured location if available
-        }
+        } catch (e) {}
       }
 
       const response = await scanQR({
         box_id: scannedBoxId,
-        shipper_id: selectedShipper,
+        shipper_id: user.id,
         status: status,
         notes: notes,
         latitude: currentLocation?.lat,
@@ -188,13 +170,8 @@ const ShipperApp = () => {
         message: response.data.message || 'Cập nhật trạng thái thành công!' 
       });
 
-      // Reset form (keep shipper selection)
       setTimeout(() => {
-        setScannedBoxId('');
-        setBoxInfo(null);
-        setStatus('');
-        setNotes('');
-        setAlert(null);
+        handleReset();
       }, 2000);
     } catch (error) {
       setAlert({ 
@@ -214,42 +191,29 @@ const ShipperApp = () => {
     setAlert(null);
   };
 
-  const selectedShipperInfo = shippers.find(s => s.id === selectedShipper);
+  if (authLoading || !user || user.role !== 'shipper') {
+    return <div className="min-h-screen flex items-center justify-center">Đang tải...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-3 md:p-4" data-testid="shipper-app">
       <div className="max-w-2xl mx-auto space-y-4 py-4 md:py-6">
         {/* Header */}
-        <div className="text-center">
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-1">📦 Shipper App</h1>
-          <p className="text-sm md:text-base text-gray-600">Quét QR & cập nhật trạng thái</p>
-          <p className="text-xs text-gray-500 mt-1">🏙️ Khu vực hoạt động: Đà Nẵng</p>
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-1">📦 Shipper App</h1>
+            <p className="text-sm text-gray-600">Xin chào, <strong>{user.name}</strong> ({user.shipper_code})</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => { logout(); navigate('/shipper/login'); }}>
+            Đăng Xuất
+          </Button>
         </div>
 
-        {/* Shipper Selection (Always Visible) */}
+        {/* GPS Card */}
         <Card className="border-2 border-blue-200 bg-blue-50/50">
           <CardContent className="pt-4 pb-4">
-            <Label className="text-sm font-medium mb-2 block">👤 Shipper hiện tại</Label>
-            <Select value={selectedShipper} onValueChange={setSelectedShipper}>
-              <SelectTrigger data-testid="shipper-select" className="h-12 text-base bg-white">
-                <SelectValue placeholder="Chọn tên của bạn..." />
-              </SelectTrigger>
-              <SelectContent>
-                {shippers.map((shipper) => (
-                  <SelectItem key={shipper.id} value={shipper.id}>
-                    {shipper.name} - {shipper.phone}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {selectedShipperInfo && (
-              <p className="text-xs text-blue-700 mt-1">
-                ✓ Đã lưu, lần sau không cần chọn lại
-              </p>
-            )}
-
             {/* GPS Status */}
-            <div className="mt-3 space-y-2">
+            <div className="space-y-2">
               {locationStatus === 'idle' && (
                 <Button 
                   type="button"

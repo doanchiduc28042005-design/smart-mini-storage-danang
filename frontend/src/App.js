@@ -8,6 +8,9 @@ import CustomersManagement from "@/pages/CustomersManagement";
 import ShippersManagement from "@/pages/ShippersManagement";
 import EmployeesManagement from "@/pages/EmployeesManagement";
 import ShipperApp from "@/pages/ShipperApp";
+import ShipperRegister from "@/pages/ShipperRegister";
+import ShipperLogin from "@/pages/ShipperLogin";
+import ShipperSetupPassword from "@/pages/ShipperSetupPassword";
 import TrackingPage from "@/pages/TrackingPage";
 import CustomerHub from "@/pages/CustomerHub";
 import CustomerRegister from "@/pages/CustomerRegister";
@@ -114,6 +117,9 @@ function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/shipper" element={<ShipperApp />} />
+            <Route path="/shipper/register" element={<ShipperRegister />} />
+            <Route path="/shipper/login" element={<ShipperLogin />} />
+            <Route path="/shipper/setup-password" element={<ShipperSetupPassword />} />
             <Route path="/track" element={<TrackingPage />} />
             <Route path="/track/:boxId" element={<TrackingPage />} />
 
