@@ -1,13 +1,13 @@
 {
   "files": {
-    "main.css": "/smart-mini-storage-danang/static/css/main.2aa73b18.css",
-    "main.js": "/smart-mini-storage-danang/static/js/main.e05943b2.js",
+    "main.css": "/smart-mini-storage-danang/static/css/main.2fd1e1b1.css",
+    "main.js": "/smart-mini-storage-danang/static/js/main.e45a322a.js",
     "index.html": "/smart-mini-storage-danang/index.html",
-    "main.2aa73b18.css.map": "/smart-mini-storage-danang/static/css/main.2aa73b18.css.map",
-    "main.e05943b2.js.map": "/smart-mini-storage-danang/static/js/main.e05943b2.js.map"
+    "main.2fd1e1b1.css.map": "/smart-mini-storage-danang/static/css/main.2fd1e1b1.css.map",
+    "main.e45a322a.js.map": "/smart-mini-storage-danang/static/js/main.e45a322a.js.map"
   },
   "entrypoints": [
-    "static/css/main.2aa73b18.css",
-    "static/js/main.e05943b2.js"
+    "static/css/main.2fd1e1b1.css",
+    "static/js/main.e45a322a.js"
   ]
 }
