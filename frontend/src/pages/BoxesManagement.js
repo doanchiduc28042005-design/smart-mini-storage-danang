@@ -35,6 +35,7 @@ const BoxesManagement = () => {
   const [showHistoryDialog, setShowHistoryDialog] = useState(false);
   const [showQRDialog, setShowQRDialog] = useState(false);
   const [showLocationDialog, setShowLocationDialog] = useState(false);
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
 
   const [selectedCustomer, setSelectedCustomer] = useState('');
   const [customBoxId, setCustomBoxId] = useState('');
@@ -112,6 +113,11 @@ const BoxesManagement = () => {
   const handleViewQR = (box) => {
     setSelectedBox(box);
     setShowQRDialog(true);
+  };
+
+  const handleViewDetails = (box) => {
+    setSelectedBox(box);
+    setShowDetailsDialog(true);
   };
 
   const handleOpenLocation = (box) => {
@@ -198,7 +204,10 @@ const BoxesManagement = () => {
             📍 {box.last_latitude.toFixed(4)}, {box.last_longitude.toFixed(4)}
           </p>
         )}
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap mt-2">
+          <Button size="sm" variant="default" onClick={() => handleViewDetails(box)} data-testid={`view-details-${box.box_id}`}>
+            ℹ️ Chi Tiết
+          </Button>
           <Button size="sm" variant="outline" onClick={() => handleViewQR(box)} data-testid={`view-qr-${box.box_id}`}>
             🔲 QR
           </Button>
@@ -407,7 +416,6 @@ const BoxesManagement = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Location Picker Dialog */}
       <Dialog open={showLocationDialog} onOpenChange={setShowLocationDialog}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -428,6 +436,75 @@ const BoxesManagement = () => {
               onSave={handleSaveLocation}
               onCancel={() => setShowLocationDialog(false)}
             />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>📋 Chi Tiết Thùng Hàng: {selectedBox?.box_id}</DialogTitle>
+          </DialogHeader>
+          {selectedBox && (
+            <div className="space-y-4 mt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-50 p-3 rounded-lg border">
+                  <p className="text-sm font-semibold text-gray-500 mb-1">Khách hàng</p>
+                  <p className="font-medium text-gray-900">{selectedBox.customer_name}</p>
+                </div>
+                <div className="bg-gray-50 p-3 rounded-lg border">
+                  <p className="text-sm font-semibold text-gray-500 mb-1">Trạng thái</p>
+                  <Badge className={statusColors[selectedBox.status]}>
+                    {statusLabels[selectedBox.status] || selectedBox.status}
+                  </Badge>
+                </div>
+                <div className="bg-gray-50 p-3 rounded-lg border">
+                  <p className="text-sm font-semibold text-gray-500 mb-1">Thời gian tạo</p>
+                  <p className="font-medium text-gray-900">{new Date(selectedBox.created_at).toLocaleString('vi-VN')}</p>
+                </div>
+                <div className="bg-gray-50 p-3 rounded-lg border">
+                  <p className="text-sm font-semibold text-gray-500 mb-1">Cập nhật cuối</p>
+                  <p className="font-medium text-gray-900">{new Date(selectedBox.last_updated).toLocaleString('vi-VN')}</p>
+                </div>
+              </div>
+              
+              <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100 space-y-3">
+                <h4 className="font-bold text-indigo-900 flex items-center gap-2">
+                  <span>📦</span> Thông tin hàng hóa & Lấy hàng
+                </h4>
+                
+                <div>
+                  <p className="text-sm font-semibold text-indigo-800">Mô tả hàng hóa:</p>
+                  <p className="text-gray-800 mt-1">{selectedBox.item_description || <span className="italic text-gray-400">Không có mô tả</span>}</p>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-semibold text-indigo-800">Thời gian hẹn lấy:</p>
+                    <p className="text-gray-800 mt-1">{selectedBox.pickup_time ? new Date(selectedBox.pickup_time).toLocaleString('vi-VN') : <span className="italic text-gray-400">Không hẹn giờ</span>}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-indigo-800">Địa chỉ lấy hàng:</p>
+                    <p className="text-gray-800 mt-1">{selectedBox.pickup_address || <span className="italic text-gray-400">Sử dụng địa chỉ mặc định của KH</span>}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-sm font-semibold text-indigo-800">Ghi chú của khách hàng:</p>
+                  <div className="bg-white p-3 rounded border border-indigo-200 mt-1 min-h-[60px]">
+                    {selectedBox.notes ? (
+                      <p className="text-gray-800 whitespace-pre-wrap">{selectedBox.notes}</p>
+                    ) : (
+                      <p className="italic text-gray-400 text-sm">Không có ghi chú thêm</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              <DialogFooter className="mt-6">
+                <Button variant="outline" onClick={() => setShowDetailsDialog(false)}>Đóng</Button>
+              </DialogFooter>
+            </div>
           )}
         </DialogContent>
       </Dialog>
