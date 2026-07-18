@@ -23,7 +23,12 @@ const AIChatbot = React.lazy(() => import("@/components/AIChatbot"));
 
 const GlobalChatbot = () => {
   const location = useLocation();
+  const { user } = useAuth();
+  
+  // Chỉ hiển thị cho khách hàng đã đăng nhập
+  if (!user || user.role !== 'customer') return null;
   if (location.pathname.startsWith('/doanh_nghiep')) return null;
+  
   return (
     <Suspense fallback={null}>
       <AIChatbot />

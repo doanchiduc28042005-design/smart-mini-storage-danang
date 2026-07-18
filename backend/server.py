@@ -108,17 +108,25 @@ app = FastAPI()
 @app.on_event("startup")
 async def startup_db_client():
     # Indexes for faster query resolution
-    await db.customers.create_index([("email", 1)])
-    await db.customers.create_index([("phone", 1)])
-    
-    await db.shippers.create_index([("phone", 1)])
-    await db.shippers.create_index([("shipper_code", 1)])
-    
-    await db.boxes.create_index([("box_id", 1)])
-    await db.boxes.create_index([("customer_id", 1)])
-    await db.boxes.create_index([("status", 1)])
-    
-    await db.tracking_history.create_index([("box_id", 1)])
+    indexes_to_create = [
+        (db.customers, [("email", 1)]),
+        (db.customers, [("phone", 1)]),
+        (db.shippers, [("phone", 1)]),
+        (db.shippers, [("shipper_code", 1)]),
+        (db.boxes, [("box_id", 1)]),
+        (db.boxes, [("customer_id", 1)]),
+        (db.boxes, [("status", 1)]),
+        (db.orders, [("order_id", 1)]),
+        (db.orders, [("customer_id", 1)]),
+        (db.orders, [("status", 1)]),
+        (db.orders, [("shipper_id", 1)]),
+        (db.tracking_history, [("box_id", 1)])
+    ]
+    for collection, keys in indexes_to_create:
+        try:
+            await collection.create_index(keys)
+        except Exception as e:
+            logging.warning(f"Failed to create index {keys} on {collection.name}: {e}")
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")

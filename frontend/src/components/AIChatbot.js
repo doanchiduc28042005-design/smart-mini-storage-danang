@@ -1,10 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 
-// Update base API URL based on environment
-const API_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://smart-mini-storage-danang.onrender.com/api' 
-  : 'http://localhost:8000/api';
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+const API_URL = `${BACKEND_URL}/api`;
 
 const AIChatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -48,7 +46,7 @@ const AIChatbot = () => {
     } catch (error) {
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: 'Xin lỗi, hiện tại tôi đang quá tải hoặc gặp sự cố kết nối. Vui lòng thử lại sau nhé!' 
+        content: error.response?.data?.detail || 'Xin lỗi, hiện tại tôi đang gặp sự cố kết nối hoặc chưa được cấu hình API Key. Vui lòng thử lại sau nhé!' 
       }]);
     } finally {
       setIsLoading(false);

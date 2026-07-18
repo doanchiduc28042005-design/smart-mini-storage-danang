@@ -5,15 +5,15 @@ const AdminLayout = ({ children }) => {
   const location = useLocation();
   
   const navItems = [
-    { path: '/admin', label: '📊 Dashboard', testId: 'nav-dashboard' },
-    { path: '/admin/boxes', label: '📦 Thùng Hàng', testId: 'nav-boxes' },
-    { path: '/admin/customers', label: '👤 Khách Hàng', testId: 'nav-customers' },
-    { path: '/admin/shippers', label: '🚚 Shippers', testId: 'nav-shippers' },
-    { path: '/admin/employees', label: '💼 Nhân Viên', testId: 'nav-employees' },
+    { path: '/doanh_nghiep', label: '📊 Dashboard', testId: 'nav-dashboard' },
+    { path: '/doanh_nghiep/boxes', label: '📦 Thùng Hàng', testId: 'nav-boxes' },
+    { path: '/doanh_nghiep/customers', label: '👤 Khách Hàng', testId: 'nav-customers' },
+    { path: '/doanh_nghiep/shippers', label: '🚚 Shippers', testId: 'nav-shippers' },
+    { path: '/doanh_nghiep/employees', label: '💼 Nhân Viên', testId: 'nav-employees' },
   ];
 
   const isActive = (path) => {
-    if (path === '/admin') return location.pathname === '/admin' || location.pathname === '/admin/';
+    if (path === '/doanh_nghiep') return location.pathname === '/doanh_nghiep' || location.pathname === '/doanh_nghiep/';
     return location.pathname === path;
   };
 
@@ -40,15 +40,6 @@ const AdminLayout = ({ children }) => {
             </Link>
           ))}
         </nav>
-        <div className="p-4 border-t">
-          <Link
-            to="/shipper"
-            data-testid="nav-shipper-app"
-            className="block px-4 py-2 bg-gradient-to-r from-orange-500 to-pink-500 text-white text-center rounded-lg font-medium hover:opacity-90 transition-opacity"
-          >
-            📱 Mở App Shipper
-          </Link>
-        </div>
       </aside>
       <main className="flex-1 overflow-auto">
         {children}
