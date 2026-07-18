@@ -1,22 +1,24 @@
+import React, { Suspense } from 'react';
 import "@/App.css";
 import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import AdminLayout from "@/components/AdminLayout";
-import AdminDashboard from "@/pages/AdminDashboard";
-import BoxesManagement from "@/pages/BoxesManagement";
-import CustomersManagement from "@/pages/CustomersManagement";
-import ShippersManagement from "@/pages/ShippersManagement";
-import EmployeesManagement from "@/pages/EmployeesManagement";
-import ShipperApp from "@/pages/ShipperApp";
-import ShipperRegister from "@/pages/ShipperRegister";
-import ShipperLogin from "@/pages/ShipperLogin";
-import ShipperSetupPassword from "@/pages/ShipperSetupPassword";
-import TrackingPage from "@/pages/TrackingPage";
-import CustomerHub from "@/pages/CustomerHub";
-import CustomerRegister from "@/pages/CustomerRegister";
-import CustomerLogin from "@/pages/CustomerLogin";
-import CustomerDashboard from "@/pages/CustomerDashboard";
-import TermsPage from "@/pages/TermsPage";
+
+const AdminDashboard = React.lazy(() => import("@/pages/AdminDashboard"));
+const BoxesManagement = React.lazy(() => import("@/pages/BoxesManagement"));
+const CustomersManagement = React.lazy(() => import("@/pages/CustomersManagement"));
+const ShippersManagement = React.lazy(() => import("@/pages/ShippersManagement"));
+const EmployeesManagement = React.lazy(() => import("@/pages/EmployeesManagement"));
+const ShipperApp = React.lazy(() => import("@/pages/ShipperApp"));
+const ShipperRegister = React.lazy(() => import("@/pages/ShipperRegister"));
+const ShipperLogin = React.lazy(() => import("@/pages/ShipperLogin"));
+const ShipperSetupPassword = React.lazy(() => import("@/pages/ShipperSetupPassword"));
+const TrackingPage = React.lazy(() => import("@/pages/TrackingPage"));
+const CustomerHub = React.lazy(() => import("@/pages/CustomerHub"));
+const CustomerRegister = React.lazy(() => import("@/pages/CustomerRegister"));
+const CustomerLogin = React.lazy(() => import("@/pages/CustomerLogin"));
+const CustomerDashboard = React.lazy(() => import("@/pages/CustomerDashboard"));
+const TermsPage = React.lazy(() => import("@/pages/TermsPage"));
 
 const RequireAuth = ({ children }) => {
   const { user, loading } = useAuth();
@@ -59,20 +61,7 @@ const LandingPage = () => {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6">
-          <Link to="/admin" data-testid="goto-admin">
-            <div className="bg-white p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1 cursor-pointer border-2 border-transparent hover:border-blue-500 h-full">
-              <div className="text-6xl mb-4">💼</div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Doanh Nghiệp</h2>
-              <p className="text-gray-600 mb-4">
-                Quản lý thùng hàng, khách hàng, shippers và theo dõi thống kê tổng quan
-              </p>
-              <span className="inline-block bg-blue-600 text-white px-4 py-2 rounded-lg font-medium">
-                Truy cập Admin →
-              </span>
-            </div>
-          </Link>
-
+        <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
           <Link to="/shipper" data-testid="goto-shipper">
             <div className="bg-white p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1 cursor-pointer border-2 border-transparent hover:border-pink-500 h-full">
               <div className="text-6xl mb-4">🚚</div>
@@ -113,31 +102,37 @@ function App() {
     <div className="App">
       <BrowserRouter basename={process.env.PUBLIC_URL}>
         <AuthProvider>
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/terms" element={<TermsPage />} />
-            <Route path="/shipper" element={<ShipperApp />} />
-            <Route path="/shipper/register" element={<ShipperRegister />} />
-            <Route path="/shipper/login" element={<ShipperLogin />} />
-            <Route path="/shipper/setup-password" element={<ShipperSetupPassword />} />
-            <Route path="/track" element={<TrackingPage />} />
-            <Route path="/track/:boxId" element={<TrackingPage />} />
+          <Suspense fallback={
+            <div className="flex items-center justify-center min-h-screen">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+            </div>
+          }>
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/terms" element={<TermsPage />} />
+              <Route path="/shipper" element={<ShipperApp />} />
+              <Route path="/shipper/register" element={<ShipperRegister />} />
+              <Route path="/shipper/login" element={<ShipperLogin />} />
+              <Route path="/shipper/setup-password" element={<ShipperSetupPassword />} />
+              <Route path="/track" element={<TrackingPage />} />
+              <Route path="/track/:boxId" element={<TrackingPage />} />
 
-            {/* Customer auth */}
-            <Route path="/customer" element={<CustomerHub />} />
-            <Route path="/customer/register" element={<CustomerRegister />} />
-            <Route path="/customer/login" element={<CustomerLogin />} />
-            <Route path="/customer/dashboard" element={<RequireAuth><CustomerDashboard /></RequireAuth>} />
+              {/* Customer auth */}
+              <Route path="/customer" element={<CustomerHub />} />
+              <Route path="/customer/register" element={<CustomerRegister />} />
+              <Route path="/customer/login" element={<CustomerLogin />} />
+              <Route path="/customer/dashboard" element={<RequireAuth><CustomerDashboard /></RequireAuth>} />
 
-            {/* Admin */}
-            <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
-            <Route path="/admin/boxes" element={<AdminLayout><BoxesManagement /></AdminLayout>} />
-            <Route path="/admin/customers" element={<AdminLayout><CustomersManagement /></AdminLayout>} />
-            <Route path="/admin/shippers" element={<AdminLayout><ShippersManagement /></AdminLayout>} />
-            <Route path="/admin/employees" element={<AdminLayout><EmployeesManagement /></AdminLayout>} />
+              {/* Admin */}
+              <Route path="/doanh_nghiep" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
+              <Route path="/doanh_nghiep/boxes" element={<AdminLayout><BoxesManagement /></AdminLayout>} />
+              <Route path="/doanh_nghiep/customers" element={<AdminLayout><CustomersManagement /></AdminLayout>} />
+              <Route path="/doanh_nghiep/shippers" element={<AdminLayout><ShippersManagement /></AdminLayout>} />
+              <Route path="/doanh_nghiep/employees" element={<AdminLayout><EmployeesManagement /></AdminLayout>} />
 
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
         </AuthProvider>
       </BrowserRouter>
     </div>

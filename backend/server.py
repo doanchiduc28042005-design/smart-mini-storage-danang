@@ -104,6 +104,21 @@ JWT_ALGORITHM = "HS256"
 # Create the main app without a prefix
 app = FastAPI()
 
+@app.on_event("startup")
+async def startup_db_client():
+    # Indexes for faster query resolution
+    await db.customers.create_index([("email", 1)])
+    await db.customers.create_index([("phone", 1)])
+    
+    await db.shippers.create_index([("phone", 1)])
+    await db.shippers.create_index([("shipper_code", 1)])
+    
+    await db.boxes.create_index([("box_id", 1)])
+    await db.boxes.create_index([("customer_id", 1)])
+    await db.boxes.create_index([("status", 1)])
+    
+    await db.tracking_history.create_index([("box_id", 1)])
+
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
