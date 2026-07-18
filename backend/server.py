@@ -275,6 +275,18 @@ class ShipperLogin(BaseModel):
 
 class ShipperReject(BaseModel):
     reason: str
+class Notification(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    customer_id: str
+    title: str
+    message: str
+    is_read: bool = False
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class BoxDeleteRequest(BaseModel):
+    reason: str
 
 
 class Employee(BaseModel):
@@ -450,7 +462,8 @@ async def register_customer(data: CustomerRegister, response: Response):
             "name": customer_doc["name"],
             "phone": customer_doc["phone"],
             "email": customer_doc["email"],
-            "default_pickup_address": customer_doc["default_pickup_address"]
+            "default_pickup_address": customer_doc["default_pickup_address"],
+            "role": "customer"
         }
     }
 
@@ -493,7 +506,8 @@ async def login_customer(data: CustomerLogin, response: Response):
             "name": user["name"],
             "phone": user["phone"],
             "email": user.get("email"),
-            "default_pickup_address": user.get("default_pickup_address")
+            "default_pickup_address": user.get("default_pickup_address"),
+            "role": "customer"
         }
     }
 
@@ -863,11 +877,47 @@ async def get_box(box_id: str):
     return box
 
 @api_router.delete("/boxes/{box_id}")
-async def delete_box(box_id: str):
+async def delete_box(box_id: str, input: BoxDeleteRequest):
+    # Fetch box first to get customer_id
+    box = await db.boxes.find_one({"box_id": box_id})
+    if not box:
+        raise HTTPException(status_code=404, detail="Thùng hàng không tồn tại")
+        
     result = await db.boxes.delete_one({"box_id": box_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Thùng hàng không tồn tại")
-    return {"success": True, "message": "Đã xóa thùng hàng"}
+        
+    # Create notification
+    notif = Notification(
+        customer_id=box["customer_id"],
+        title="Thùng hàng đã bị hủy",
+        message=f"Thùng hàng {box_id} của bạn đã bị hủy bởi Quản trị viên. Lý do: {input.reason}"
+    )
+    await db.notifications.insert_one(notif.model_dump())
+    
+    return {"success": True, "message": "Đã xóa thùng hàng và gửi thông báo"}
+
+
+@api_router.get("/notifications")
+async def get_notifications(current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != "customer":
+        raise HTTPException(status_code=403, detail="Chỉ khách hàng mới xem được thông báo")
+    
+    cursor = db.notifications.find({"customer_id": current_user["id"]}).sort("created_at", -1)
+    notifications = await cursor.to_list(length=100)
+    for n in notifications:
+        n["_id"] = str(n["_id"])
+    return notifications
+
+@api_router.put("/notifications/{notif_id}/read")
+async def mark_notification_read(notif_id: str, current_user: dict = Depends(get_current_user)):
+    result = await db.notifications.update_one(
+        {"id": notif_id, "customer_id": current_user["id"]},
+        {"$set": {"is_read": True}}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Không tìm thấy thông báo")
+    return {"success": True}
 
 
 class LocationUpdate(BaseModel):

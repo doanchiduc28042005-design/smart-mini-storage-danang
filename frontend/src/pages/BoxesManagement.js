@@ -39,6 +39,7 @@ const BoxesManagement = () => {
 
   const [selectedCustomer, setSelectedCustomer] = useState('');
   const [customBoxId, setCustomBoxId] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     loadBoxes();
@@ -89,13 +90,19 @@ const BoxesManagement = () => {
   };
 
   const handleDeleteBox = async (boxId) => {
-    if (!window.confirm(`Bạn có chắc muốn xóa thùng ${boxId}?`)) return;
+    const reason = window.prompt(`Bạn có chắc muốn xóa thùng ${boxId}?\nVui lòng nhập lý do xóa:`);
+    if (reason === null) return;
+    if (reason.trim() === '') {
+      alert('Vui lòng nhập lý do xóa!');
+      return;
+    }
     
     try {
-      await deleteBox(boxId);
+      await deleteBox(boxId, reason.trim());
       loadBoxes();
+      alert(`✓ Đã xóa thùng hàng ${boxId} thành công.`);
     } catch (error) {
-      alert('Lỗi khi xóa thùng hàng');
+      alert('Lỗi khi xóa thùng hàng: ' + (error.response?.data?.detail || error.message));
     }
   };
 
@@ -153,15 +160,18 @@ const BoxesManagement = () => {
     printWindow.print();
   };
 
-  const filteredBoxes = filterStatus === 'all' 
-    ? boxes 
-    : boxes.filter(box => box.status === filterStatus);
+  const filteredBoxes = boxes.filter(box => {
+    const statusMatch = filterStatus === 'all' || box.status === filterStatus;
+    const searchMatch = box.box_id.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                        box.customer_name.toLowerCase().includes(searchTerm.toLowerCase());
+    return statusMatch && searchMatch;
+  });
 
   // Group boxes by status for tabs
-  const waitingBoxes = boxes.filter(b => b.status === 'WAITING_FOR_PICKUP');
-  const pickedUpBoxes = boxes.filter(b => b.status === 'PICKED_UP');
-  const inHubBoxes = boxes.filter(b => b.status === 'IN_HUB');
-  const deliveredBoxes = boxes.filter(b => b.status === 'DELIVERED');
+  const waitingBoxes = filteredBoxes.filter(b => b.status === 'WAITING_FOR_PICKUP');
+  const pickedUpBoxes = filteredBoxes.filter(b => b.status === 'PICKED_UP');
+  const inHubBoxes = filteredBoxes.filter(b => b.status === 'IN_HUB');
+  const deliveredBoxes = filteredBoxes.filter(b => b.status === 'DELIVERED');
 
   // Render single box card (reusable)
   const renderBoxCard = (box) => (
@@ -255,14 +265,22 @@ const BoxesManagement = () => {
 
   return (
     <div className="p-6 space-y-6" data-testid="boxes-management">
-      <div className="flex justify-between items-center flex-wrap gap-2">
+      <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">📦 Quản Lý Thùng Hàng</h1>
-          <p className="text-gray-600 mt-1">Tổng số: {boxes.length} thùng • 🏙️ Đà Nẵng</p>
+          <p className="text-gray-600 mt-1">Tổng số: {filteredBoxes.length} thùng • 🏙️ Đà Nẵng</p>
         </div>
-        <Button onClick={() => setShowCreateDialog(true)} data-testid="create-box-button">
-          + Tạo Thùng Mới
-        </Button>
+        <div className="flex gap-4 items-center flex-1 justify-end">
+          <Input 
+            placeholder="Tìm theo ID, Khách hàng..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="max-w-xs"
+          />
+          <Button onClick={() => setShowCreateDialog(true)} data-testid="create-box-button">
+            + Tạo Thùng Mới
+          </Button>
+        </div>
       </div>
 
       {/* Tabs by Status - 4 sections */}

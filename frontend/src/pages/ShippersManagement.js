@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 
 const ShippersManagement = () => {
   const [shippers, setShippers] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [selectedShipper, setSelectedShipper] = useState(null);
   const [showReview, setShowReview] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
@@ -71,15 +72,30 @@ const ShippersManagement = () => {
 
   return (
     <div className="p-6 space-y-6" data-testid="shippers-management">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">🚚 Quản Lý Shippers</h1>
           <p className="text-gray-600 mt-1">Tổng số: {shippers.length} shipper</p>
         </div>
+        <div className="flex-1 max-w-sm flex justify-end">
+          <input 
+            type="text" 
+            placeholder="Tìm theo Tên, SĐT, hoặc Email..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {shippers.map((shipper) => (
+        {shippers
+          .filter(shipper => 
+            shipper.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+            shipper.phone?.includes(searchTerm) || 
+            shipper.email?.toLowerCase().includes(searchTerm.toLowerCase())
+          )
+          .map((shipper) => (
           <Card key={shipper.id} className="hover:shadow-lg transition-shadow border-2" style={{ borderColor: getBorderColor(shipper.registration_status) }}>
             <CardHeader className="pb-2">
               <div className="flex justify-between items-start">

@@ -61,8 +61,14 @@ export const getShipperBoxes = (id) => apiClient.get(`/shippers/${id}/boxes`);
 export const getBoxes = (status) => apiClient.get('/boxes', { params: { status } });
 export const createBox = (data) => apiClient.post('/boxes', data);
 export const getBox = (boxId) => apiClient.get(`/boxes/${boxId}`);
-export const deleteBox = (boxId) => apiClient.delete(`/boxes/${boxId}`);
+export const deleteBox = (boxId, reason) => apiClient.delete(`/boxes/${boxId}`, { data: { reason } });
 export const updateBoxLocation = (boxId, data) => apiClient.patch(`/boxes/${boxId}/location`, data);
+export const processQRScan = (data) => apiClient.post('/qr/scan', data);
+
+// Notifications
+export const getNotifications = () => apiClient.get('/notifications');
+export const markNotificationRead = (notifId) => apiClient.put(`/notifications/${notifId}/read`);
+
 
 // QR Scan & Tracking
 export const scanQR = (data) => apiClient.post('/v1/storage/scan', data);

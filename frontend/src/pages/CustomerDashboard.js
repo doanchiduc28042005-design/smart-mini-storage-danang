@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getMyBoxes, setAuthToken } from '@/services/api';
+import { getMyBoxes, setAuthToken, getNotifications, markNotificationRead } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import CreateOrderDialog from '@/components/CreateOrderDialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const statusLabels = {
   'WAITING_FOR_PICKUP': { label: '⏳ Chờ Lấy', color: 'bg-yellow-100 text-yellow-800 border-yellow-300' },
@@ -21,9 +22,12 @@ const CustomerDashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [showCreateOrder, setShowCreateOrder] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifDialog, setShowNotifDialog] = useState(false);
 
   useEffect(() => {
     loadBoxes();
+    loadNotifications();
   }, []);
 
   const loadBoxes = async () => {
@@ -34,6 +38,25 @@ const CustomerDashboard = () => {
       console.error(e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadNotifications = async () => {
+    try {
+      const { data } = await getNotifications();
+      setNotifications(data);
+    } catch (e) {
+      console.error('Error loading notifications:', e);
+    }
+  };
+
+  const handleReadNotification = async (notif) => {
+    if (notif.is_read) return;
+    try {
+      await markNotificationRead(notif.id);
+      loadNotifications();
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -65,9 +88,23 @@ const CustomerDashboard = () => {
               📧 {user.email} • 📞 {user.phone}
             </p>
           </div>
-          <Button variant="outline" onClick={handleLogout} data-testid="logout-button">
-            Đăng xuất
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              className="relative" 
+              onClick={() => setShowNotifDialog(true)}
+            >
+              🔔
+              {notifications.filter(n => !n.is_read).length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  {notifications.filter(n => !n.is_read).length}
+                </span>
+              )}
+            </Button>
+            <Button variant="outline" onClick={handleLogout} data-testid="logout-button">
+              Đăng xuất
+            </Button>
+          </div>
         </div>
 
         {/* Create Order CTA */}
@@ -235,6 +272,41 @@ const CustomerDashboard = () => {
         defaultAddress={user.default_pickup_address}
         onCreated={() => loadBoxes()}
       />
+
+      {/* Notifications Dialog */}
+      <Dialog open={showNotifDialog} onOpenChange={setShowNotifDialog}>
+        <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>🔔 Thông báo của bạn</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 mt-4">
+            {notifications.length === 0 ? (
+              <p className="text-gray-500 text-center py-4">Bạn chưa có thông báo nào.</p>
+            ) : (
+              notifications.map((notif) => (
+                <div 
+                  key={notif.id} 
+                  className={`p-3 rounded-lg border ${notif.is_read ? 'bg-gray-50 border-gray-100' : 'bg-blue-50 border-blue-200 cursor-pointer hover:bg-blue-100'}`}
+                  onClick={() => handleReadNotification(notif)}
+                >
+                  <div className="flex justify-between items-start mb-1">
+                    <h4 className={`font-semibold ${notif.is_read ? 'text-gray-700' : 'text-blue-900'}`}>
+                      {notif.title}
+                    </h4>
+                    {!notif.is_read && <span className="w-2 h-2 rounded-full bg-blue-600 mt-1"></span>}
+                  </div>
+                  <p className={`text-sm ${notif.is_read ? 'text-gray-500' : 'text-blue-800'}`}>
+                    {notif.message}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-2">
+                    {new Date(notif.created_at).toLocaleString('vi-VN')}
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
