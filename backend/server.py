@@ -123,8 +123,8 @@ async def startup_db_client():
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
-# Include the chatbot router (it already has /api/chat prefix)
-app.include_router(chatbot_router)
+# Include the chatbot router in api_router so it becomes /api/chat
+api_router.include_router(chatbot_router)
 
 import asyncio
 

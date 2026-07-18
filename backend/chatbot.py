@@ -5,7 +5,7 @@ import os
 import logging
 from litellm import acompletion
 
-chatbot_router = APIRouter(prefix="/api/chat", tags=["Chatbot"])
+chatbot_router = APIRouter(tags=["Chatbot"])
 
 class ChatMessage(BaseModel):
     role: str
@@ -37,7 +37,7 @@ Nhiệm vụ của bạn:
 - KHÔNG copy-paste y hệt luật lệ, hãy hành văn như con người, thân thiện và giúp ích nhất có thể.
 """
 
-@chatbot_router.post("")
+@chatbot_router.post("/chat")
 async def chat_with_ai(request: ChatRequest):
     try:
         messages = [{"role": "system", "content": SYSTEM_PROMPT}]
