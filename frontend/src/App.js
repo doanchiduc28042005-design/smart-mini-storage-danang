@@ -1,6 +1,6 @@
 import React, { Suspense } from 'react';
 import "@/App.css";
-import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Link, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import AdminLayout from "@/components/AdminLayout";
 
@@ -19,6 +19,17 @@ const CustomerRegister = React.lazy(() => import("@/pages/CustomerRegister"));
 const CustomerLogin = React.lazy(() => import("@/pages/CustomerLogin"));
 const CustomerDashboard = React.lazy(() => import("@/pages/CustomerDashboard"));
 const TermsPage = React.lazy(() => import("@/pages/TermsPage"));
+const AIChatbot = React.lazy(() => import("@/components/AIChatbot"));
+
+const GlobalChatbot = () => {
+  const location = useLocation();
+  if (location.pathname.startsWith('/doanh_nghiep')) return null;
+  return (
+    <Suspense fallback={null}>
+      <AIChatbot />
+    </Suspense>
+  );
+};
 
 const RequireAuth = ({ children }) => {
   const { user, loading } = useAuth();
@@ -133,6 +144,7 @@ function App() {
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>
+          <GlobalChatbot />
         </AuthProvider>
       </BrowserRouter>
     </div>

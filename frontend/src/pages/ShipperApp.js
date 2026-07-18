@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { scanQR, getBox } from '@/services/api';
+import { scanQR, getBox, getShipperBoxes } from '@/services/api';
 import QRScanner from '@/components/QRScanner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,6 +21,11 @@ const statusLabels = {
 const ShipperApp = () => {
   const { user, loading: authLoading, logout } = useAuth();
   const navigate = useNavigate();
+
+  const [activeTab, setActiveTab] = useState('scan'); // 'scan' | 'myBoxes'
+  const [myBoxes, setMyBoxes] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [loadingBoxes, setLoadingBoxes] = useState(false);
 
   const [isScanning, setIsScanning] = useState(false);
   const [scannedBoxId, setScannedBoxId] = useState('');
@@ -44,8 +49,21 @@ const ShipperApp = () => {
   useEffect(() => {
     if (user && user.role === 'shipper') {
       checkLocationPermission();
+      fetchMyBoxes();
     }
   }, [user]);
+
+  const fetchMyBoxes = async () => {
+    try {
+      setLoadingBoxes(true);
+      const res = await getShipperBoxes(user.id);
+      setMyBoxes(res.data);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoadingBoxes(false);
+    }
+  };
 
   const checkLocationPermission = async () => {
     if (!navigator.geolocation) {
@@ -209,8 +227,26 @@ const ShipperApp = () => {
           </Button>
         </div>
 
-        {/* GPS Card */}
-        <Card className="border-2 border-blue-200 bg-blue-50/50">
+        {/* Navigation Tabs */}
+        <div className="flex gap-2 bg-gray-100 p-1 rounded-lg">
+          <button 
+            className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${activeTab === 'scan' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-600 hover:bg-gray-200'}`}
+            onClick={() => setActiveTab('scan')}
+          >
+            🔍 Quét Mã / Cập Nhật
+          </button>
+          <button 
+            className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${activeTab === 'myBoxes' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-600 hover:bg-gray-200'}`}
+            onClick={() => setActiveTab('myBoxes')}
+          >
+            📦 Thùng Của Tôi ({myBoxes.length})
+          </button>
+        </div>
+
+        {activeTab === 'scan' ? (
+          <>
+            {/* GPS Card */}
+            <Card className="border-2 border-blue-200 bg-blue-50/50">
           <CardContent className="pt-4 pb-4">
             {/* GPS Status */}
             <div className="space-y-2">
@@ -405,6 +441,57 @@ const ShipperApp = () => {
         <div className="text-center text-xs text-gray-500 pt-4">
           <p>💡 Mẹo: Thêm trang này vào màn hình chính để dùng như app native</p>
         </div>
+        </>
+        ) : (
+          <div className="space-y-4">
+            {/* Search Bar */}
+            <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-100">
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                  🔍
+                </span>
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm mã thùng, nội dung..."
+                  className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {loadingBoxes ? (
+              <p className="text-center text-gray-500 py-6">Đang tải...</p>
+            ) : myBoxes.length === 0 ? (
+              <p className="text-center text-gray-500 py-6">Bạn chưa xử lý thùng hàng nào.</p>
+            ) : (
+              <div className="space-y-3">
+                {myBoxes
+                  .filter(b => b.box_id.toLowerCase().includes(searchQuery.toLowerCase()) || (b.item_description && b.item_description.toLowerCase().includes(searchQuery.toLowerCase())))
+                  .map(box => (
+                  <Card key={box.box_id} className="hover:shadow-md transition-shadow">
+                    <CardHeader className="pb-2">
+                      <div className="flex justify-between items-start gap-2">
+                        <CardTitle className="text-base font-mono">{box.box_id}</CardTitle>
+                        <Badge className={statusLabels[box.status]?.color || ''}>
+                          {statusLabels[box.status] || box.status}
+                        </Badge>
+                      </div>
+                      {box.item_description && <p className="text-xs text-gray-600 mt-1">📦 {box.item_description}</p>}
+                    </CardHeader>
+                    <CardContent className="pt-0 flex gap-2">
+                      <Button size="sm" variant="outline" className="w-full" onClick={() => {
+                        setScannedBoxId(box.box_id);
+                        setBoxInfo(box);
+                        setActiveTab('scan');
+                      }}>Cập nhật trạng thái</Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -18,6 +18,7 @@ const CustomerDashboard = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [boxes, setBoxes] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [showCreateOrder, setShowCreateOrder] = useState(false);
 
@@ -44,8 +45,13 @@ const CustomerDashboard = () => {
 
   if (!user) return null;
 
-  const activeBoxes = boxes.filter(b => b.status !== 'DELIVERED');
-  const completedBoxes = boxes.filter(b => b.status === 'DELIVERED');
+  const filteredBoxes = boxes.filter(b => 
+    b.box_id.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (b.item_description && b.item_description.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  const activeBoxes = filteredBoxes.filter(b => b.status !== 'DELIVERED');
+  const completedBoxes = filteredBoxes.filter(b => b.status === 'DELIVERED');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 p-4" data-testid="customer-dashboard">
@@ -107,6 +113,22 @@ const CustomerDashboard = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Search Bar */}
+        <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-100">
+          <div className="relative">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+              🔍
+            </span>
+            <input
+              type="text"
+              placeholder="Tìm kiếm theo mã thùng, nội dung gửi..."
+              className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+        </div>
 
         {/* Active Orders */}
         <div>

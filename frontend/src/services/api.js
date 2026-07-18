@@ -55,6 +55,7 @@ export const approveShipper = (id) => apiClient.put(`/shippers/${id}/approve`);
 export const rejectShipper = (id, data) => apiClient.put(`/shippers/${id}/reject`, data);
 export const setupShipperPassword = (data) => apiClient.post('/shippers/setup-password', data);
 export const loginShipper = (data) => apiClient.post('/shippers/login', data);
+export const getShipperBoxes = (id) => apiClient.get(`/shippers/${id}/boxes`);
 
 // Boxes
 export const getBoxes = (status) => apiClient.get('/boxes', { params: { status } });

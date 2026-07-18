@@ -17,6 +17,7 @@ import jwt
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from chatbot import chatbot_router
 
 def send_shipper_approval_email(to_email: str, shipper_code: str, setup_link: str):
     smtp_email = os.environ.get('SMTP_EMAIL')
@@ -122,6 +123,33 @@ async def startup_db_client():
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
+# Include the chatbot router (it already has /api/chat prefix)
+app.include_router(chatbot_router)
+
+import asyncio
+
+async def cleanup_inactive_shippers_task():
+    while True:
+        try:
+            # 90 days ago
+            cutoff_date = (datetime.now(timezone.utc) - timedelta(days=90)).isoformat()
+            
+            # Delete shippers who have a last_active_date older than 90 days
+            result = await db.shippers.delete_many({
+                "last_active_date": {"$lt": cutoff_date}
+            })
+            if result.deleted_count > 0:
+                logging.info(f"Cleaned up {result.deleted_count} inactive shippers.")
+                
+        except Exception as e:
+            logging.error(f"Error cleaning up inactive shippers: {e}")
+            
+        # Wait 24 hours
+        await asyncio.sleep(86400)
+
+@app.on_event("startup")
+async def start_background_tasks():
+    asyncio.create_task(cleanup_inactive_shippers_task())
 
 # ============== AUTH HELPERS ==============
 
@@ -669,6 +697,12 @@ async def login_shipper(input: ShipperLogin):
     }
     token = jwt.encode(token_payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
     
+    # Update last active date
+    await db.shippers.update_one(
+        {"id": shipper["id"]},
+        {"$set": {"last_active_date": datetime.now(timezone.utc).isoformat()}}
+    )
+    
     shipper_dict = shipper.copy()
     if isinstance(shipper_dict.get('created_at'), str):
         shipper_dict['created_at'] = datetime.fromisoformat(shipper_dict['created_at'])
@@ -699,6 +733,21 @@ async def get_shipper(shipper_id: str):
     
     return shipper
 
+@api_router.get("/shippers/{shipper_id}/boxes")
+async def get_shipper_boxes(shipper_id: str):
+    # Find all box IDs this shipper has interacted with
+    history = await db.tracking_history.find({"shipper_id": shipper_id}).to_list(10000)
+    box_ids = list(set([h["box_id"] for h in history]))
+    
+    boxes = await db.boxes.find({"box_id": {"$in": box_ids}}, {"_id": 0}).to_list(1000)
+    
+    for box in boxes:
+        if isinstance(box.get('created_at'), str):
+            box['created_at'] = datetime.fromisoformat(box['created_at'])
+        if isinstance(box.get('last_updated'), str):
+            box['last_updated'] = datetime.fromisoformat(box['last_updated'])
+            
+    return boxes
 
 # ============== EMPLOYEE ENDPOINTS ==============
 
@@ -870,6 +919,12 @@ async def process_qr_scan(data: QRScanRequest):
     await db.boxes.update_one(
         {"box_id": data.box_id},
         {"$set": update_fields}
+    )
+    
+    # Update shipper last active date
+    await db.shippers.update_one(
+        {"id": data.shipper_id},
+        {"$set": {"last_active_date": now.isoformat()}}
     )
     
     # Create tracking history
