@@ -8,3 +8,4 @@ qrcode
 pillow
 bcrypt
 PyJWT
+litellm
