@@ -339,6 +339,8 @@ class Box(BaseModel):
     pickup_time: Optional[str] = None  # ISO datetime string
     item_description: Optional[str] = None
     notes: Optional[str] = None
+    size: str = "M"
+    price_per_day: int = 6000
     created_by: str = "admin"  # 'admin' or 'customer'
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     last_updated: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -349,11 +351,15 @@ class BoxCreate(BaseModel):
     box_id: Optional[str] = None  # If not provided, will auto-generate
 
 
-class CustomerOrderCreate(BaseModel):
+class BoxOrderItem(BaseModel):
+    size: str = "M"
     item_description: str
+    notes: Optional[str] = None
+
+class CustomerOrderCreate(BaseModel):
+    boxes: List[BoxOrderItem]
     pickup_time: str  # ISO datetime string
     pickup_address: Optional[str] = None  # Fallback to customer default
-    notes: Optional[str] = None
     accept_no_prohibited: bool
 
 
@@ -566,41 +572,51 @@ async def customer_create_order(data: CustomerOrderCreate, current_user: dict = 
     if not data.accept_no_prohibited:
         raise HTTPException(status_code=400, detail="Bạn phải xác nhận không gửi hàng cấm")
     
-    if not data.item_description.strip():
-        raise HTTPException(status_code=400, detail="Vui lòng mô tả hàng hóa")
+    if not data.boxes or len(data.boxes) == 0:
+        raise HTTPException(status_code=400, detail="Vui lòng thêm ít nhất một thùng hàng")
+    
+    for box_item in data.boxes:
+        if not box_item.item_description.strip():
+            raise HTTPException(status_code=400, detail="Vui lòng mô tả hàng hóa cho tất cả các thùng")
     
     pickup_address = (data.pickup_address or current_user.get("default_pickup_address") or current_user.get("address") or "").strip()
     if not pickup_address:
         raise HTTPException(status_code=400, detail="Vui lòng nhập địa chỉ lấy hàng")
     
-    box_id = f"BOX-{str(uuid.uuid4())[:8].upper()}"
-    qr_code_data = generate_qr_code(box_id)
-    
     now = datetime.now(timezone.utc)
-    box_doc = {
-        "id": str(uuid.uuid4()),
-        "box_id": box_id,
-        "customer_id": current_user["id"],
-        "customer_name": current_user["name"],
-        "status": "WAITING_FOR_PICKUP",
-        "qr_code_data": qr_code_data,
-        "pickup_address": pickup_address,
-        "pickup_time": data.pickup_time,
-        "item_description": data.item_description.strip(),
-        "notes": data.notes.strip() if data.notes else None,
-        "created_by": "customer",
-        "created_at": now.isoformat(),
-        "last_updated": now.isoformat(),
-    }
+    created_boxes = []
     
-    await db.boxes.insert_one(box_doc)
+    price_map = {"S": 4000, "M": 6000, "L": 9000}
     
-    # Return WITHOUT _id for JSON serialization
-    box_doc.pop("_id", None)
+    for box_item in data.boxes:
+        box_id = f"BOX-{str(uuid.uuid4())[:8].upper()}"
+        qr_code_data = generate_qr_code(box_id)
+        
+        box_doc = {
+            "id": str(uuid.uuid4()),
+            "box_id": box_id,
+            "customer_id": current_user["id"],
+            "customer_name": current_user["name"],
+            "status": "WAITING_FOR_PICKUP",
+            "qr_code_data": qr_code_data,
+            "pickup_address": pickup_address,
+            "pickup_time": data.pickup_time,
+            "item_description": box_item.item_description.strip(),
+            "notes": box_item.notes.strip() if box_item.notes else None,
+            "size": box_item.size,
+            "price_per_day": price_map.get(box_item.size, 6000),
+            "created_by": "customer",
+            "created_at": now.isoformat(),
+            "last_updated": now.isoformat(),
+        }
+        await db.boxes.insert_one(box_doc)
+        box_doc.pop("_id", None)
+        created_boxes.append(box_doc)
+    
     return {
         "success": True,
-        "message": f"Đã tạo đơn hàng {box_id} thành công! Shipper sẽ đến lấy hàng theo lịch hẹn.",
-        "box": box_doc
+        "message": f"Đã tạo {len(created_boxes)} đơn hàng thành công! Shipper sẽ đến lấy hàng theo lịch hẹn.",
+        "boxes": created_boxes
     }
 
 

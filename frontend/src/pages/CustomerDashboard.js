@@ -195,8 +195,13 @@ const CustomerDashboard = () => {
                         {statusLabels[box.status]?.label || box.status}
                       </Badge>
                     </div>
+                    {box.size && (
+                      <Badge variant="outline" className="mt-2 mr-2 border-indigo-200 text-indigo-700 bg-indigo-50">
+                        Size {box.size}
+                      </Badge>
+                    )}
                     {box.item_description && (
-                      <CardDescription className="text-xs mt-1">
+                      <CardDescription className="text-xs mt-2">
                         📦 {box.item_description}
                       </CardDescription>
                     )}
@@ -241,8 +246,13 @@ const CustomerDashboard = () => {
                         {statusLabels[box.status]?.label}
                       </Badge>
                     </div>
+                    {box.size && (
+                      <Badge variant="outline" className="mt-2 mr-2 border-indigo-200 text-indigo-700 bg-indigo-50">
+                        Size {box.size}
+                      </Badge>
+                    )}
                     {box.item_description && (
-                      <CardDescription className="text-xs mt-1">
+                      <CardDescription className="text-xs mt-2">
                         📦 {box.item_description}
                       </CardDescription>
                     )}

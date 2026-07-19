@@ -193,6 +193,11 @@ const BoxesManagement = () => {
         </div>
       </CardHeader>
       <CardContent className="space-y-2">
+        {box.size && (
+          <Badge variant="outline" className="mb-2 bg-blue-50 text-blue-700 border-blue-200">
+            Size {box.size}
+          </Badge>
+        )}
         {box.item_description && (
           <p className="text-xs text-gray-700 bg-gray-50 p-2 rounded">
             📦 {box.item_description}
@@ -491,6 +496,11 @@ const BoxesManagement = () => {
                   <span>📦</span> Thông tin hàng hóa & Lấy hàng
                 </h4>
                 
+                <div>
+                  <p className="text-sm font-semibold text-indigo-800">Kích thước Thùng:</p>
+                  <p className="text-gray-800 mt-1 font-medium">{selectedBox.size ? `Size ${selectedBox.size}` : <span className="italic text-gray-400">Không xác định</span>}</p>
+                </div>
+
                 <div>
                   <p className="text-sm font-semibold text-indigo-800">Mô tả hàng hóa:</p>
                   <p className="text-gray-800 mt-1">{selectedBox.item_description || <span className="italic text-gray-400">Không có mô tả</span>}</p>
