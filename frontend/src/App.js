@@ -27,7 +27,7 @@ const GlobalChatbot = () => {
   
   // Chỉ hiển thị cho khách hàng đã đăng nhập
   if (!user || user.role !== 'customer') return null;
-  if (location.pathname.startsWith('/doanh_nghiep')) return null;
+  if (!location.pathname.startsWith('/customer/dashboard')) return null;
   
   return (
     <Suspense fallback={null}>
