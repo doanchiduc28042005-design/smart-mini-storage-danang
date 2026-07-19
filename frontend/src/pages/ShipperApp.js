@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { scanQR, getBox, getShipperBoxes } from '@/services/api';
+import { scanQR, getOrder, getShipperOrders } from '@/services/api';
 import QRScanner from '@/components/QRScanner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,14 +22,14 @@ const ShipperApp = () => {
   const { user, loading: authLoading, logout } = useAuth();
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState('scan'); // 'scan' | 'myBoxes'
-  const [myBoxes, setMyBoxes] = useState([]);
+  const [activeTab, setActiveTab] = useState('scan'); // 'scan' | 'myorders'
+  const [myorders, setMyorders] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [loadingBoxes, setLoadingBoxes] = useState(false);
+  const [loadingorders, setLoadingorders] = useState(false);
 
   const [isScanning, setIsScanning] = useState(false);
-  const [scannedBoxId, setScannedBoxId] = useState('');
-  const [boxInfo, setBoxInfo] = useState(null);
+  const [scannedorderId, setScannedorderId] = useState('');
+  const [orderInfo, setorderInfo] = useState(null);
   const [status, setStatus] = useState('');
   const [notes, setNotes] = useState('');
   const [alert, setAlert] = useState(null);
@@ -49,19 +49,19 @@ const ShipperApp = () => {
   useEffect(() => {
     if (user && user.role === 'shipper') {
       checkLocationPermission();
-      fetchMyBoxes();
+      fetchMyorders();
     }
   }, [user]);
 
-  const fetchMyBoxes = async () => {
+  const fetchMyorders = async () => {
     try {
-      setLoadingBoxes(true);
-      const res = await getShipperBoxes(user.id);
-      setMyBoxes(res.data);
+      setLoadingorders(true);
+      const res = await getShipperOrders(user.id);
+      setMyorders(res.data);
     } catch (error) {
       console.error(error);
     } finally {
-      setLoadingBoxes(false);
+      setLoadingorders(false);
     }
   };
 
@@ -134,25 +134,25 @@ const ShipperApp = () => {
     );
   };
 
-  const handleScan = async (boxId) => {
-    setScannedBoxId(boxId);
+  const handleScan = async (orderId) => {
+    setScannedorderId(orderId);
     setIsScanning(false);
     setAlert(null);
     
     try {
-      const response = await getBox(boxId);
-      setBoxInfo(response.data);
-      setAlert({ type: 'success', message: `✓ Đã quét thành công thùng: ${boxId}` });
+      const response = await getOrder(orderId);
+      setorderInfo(response.data);
+      setAlert({ type: 'success', message: `✓ Đã quét thành công thùng: ${orderId}` });
     } catch (error) {
-      setBoxInfo(null);
-      setAlert({ type: 'error', message: `⚠️ Không tìm thấy thùng "${boxId}" trong hệ thống. Vui lòng kiểm tra lại!` });
+      setorderInfo(null);
+      setAlert({ type: 'error', message: `⚠️ Không tìm thấy thùng "${orderId}" trong hệ thống. Vui lòng kiểm tra lại!` });
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!scannedBoxId || !status) {
+    if (!scannedorderId || !status) {
       setAlert({ type: 'error', message: 'Vui lòng điền đầy đủ thông tin!' });
       return;
     }
@@ -175,7 +175,7 @@ const ShipperApp = () => {
       }
 
       const response = await scanQR({
-        box_id: scannedBoxId,
+        order_id: scannedorderId,
         shipper_id: user.id,
         status: status,
         notes: notes,
@@ -202,8 +202,8 @@ const ShipperApp = () => {
   };
 
   const handleReset = () => {
-    setScannedBoxId('');
-    setBoxInfo(null);
+    setScannedorderId('');
+    setorderInfo(null);
     setStatus('');
     setNotes('');
     setAlert(null);
@@ -236,10 +236,10 @@ const ShipperApp = () => {
             🔍 Quét Mã / Cập Nhật
           </button>
           <button 
-            className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${activeTab === 'myBoxes' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-600 hover:bg-gray-200'}`}
-            onClick={() => setActiveTab('myBoxes')}
+            className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${activeTab === 'myorders' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-600 hover:bg-gray-200'}`}
+            onClick={() => setActiveTab('myorders')}
           >
-            📦 Thùng Của Tôi ({myBoxes.length})
+            📦 Thùng Của Tôi ({myorders.length})
           </button>
         </div>
 
@@ -360,8 +360,8 @@ const ShipperApp = () => {
           </Alert>
         )}
 
-        {/* QR Scanner (when no box scanned) */}
-        {!scannedBoxId && (
+        {/* QR Scanner (when no order scanned) */}
+        {!scannedorderId && (
           <QRScanner 
             onScan={handleScan} 
             isScanning={isScanning}
@@ -369,19 +369,19 @@ const ShipperApp = () => {
           />
         )}
 
-        {/* Update Status Form (when box scanned) */}
-        {scannedBoxId && (
+        {/* Update Status Form (when order scanned) */}
+        {scannedorderId && (
           <Card data-testid="update-status-form" className="border-2 border-green-200">
             <CardHeader>
               <CardTitle className="text-lg">📦 Cập Nhật Trạng Thái</CardTitle>
               <div className="flex items-center gap-2 flex-wrap mt-1">
                 <span className="text-sm text-gray-600">Mã thùng:</span>
-                <Badge variant="outline" className="font-mono text-base font-bold">{scannedBoxId}</Badge>
+                <Badge variant="outline" className="font-mono text-base font-bold">{scannedorderId}</Badge>
               </div>
-              {boxInfo && (
+              {orderInfo && (
                 <div className="text-sm text-gray-600 mt-1">
-                  <p>👤 {boxInfo.customer_name}</p>
-                  <p className="mt-1">Trạng thái hiện tại: <strong>{statusLabels[boxInfo.status] || boxInfo.status}</strong></p>
+                  <p>👤 {orderInfo.customer_name}</p>
+                  <p className="mt-1">Trạng thái hiện tại: <strong>{statusLabels[orderInfo.status] || orderInfo.status}</strong></p>
                 </div>
               )}
             </CardHeader>
@@ -417,7 +417,7 @@ const ShipperApp = () => {
                   <Button 
                     type="submit" 
                     className="flex-1 h-12 text-base bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700" 
-                    disabled={isSubmitting || !boxInfo}
+                    disabled={isSubmitting || !orderInfo}
                     data-testid="submit-update-button"
                   >
                     {isSubmitting ? '⏳ Đang xử lý...' : '✓ Xác Nhận'}
@@ -460,29 +460,43 @@ const ShipperApp = () => {
               </div>
             </div>
 
-            {loadingBoxes ? (
+            {loadingorders ? (
               <p className="text-center text-gray-500 py-6">Đang tải...</p>
-            ) : myBoxes.length === 0 ? (
+            ) : myorders.length === 0 ? (
               <p className="text-center text-gray-500 py-6">Bạn chưa xử lý thùng hàng nào.</p>
             ) : (
               <div className="space-y-3">
-                {myBoxes
-                  .filter(b => b.box_id.toLowerCase().includes(searchQuery.toLowerCase()) || (b.item_description && b.item_description.toLowerCase().includes(searchQuery.toLowerCase())))
-                  .map(box => (
-                  <Card key={box.box_id} className="hover:shadow-md transition-shadow">
+                {myorders
+                  .filter(o => {
+                    const query = searchQuery.toLowerCase();
+                    if (o.order_id.toLowerCase().includes(query)) return true;
+                    if (o.items && o.items.some(i => i.item_description.toLowerCase().includes(query))) return true;
+                    return false;
+                  })
+                  .map(order => (
+                  <Card key={order.order_id} className="hover:shadow-md transition-shadow">
                     <CardHeader className="pb-2">
                       <div className="flex justify-between items-start gap-2">
-                        <CardTitle className="text-base font-mono">{box.box_id}</CardTitle>
-                        <Badge className={statusLabels[box.status]?.color || ''}>
-                          {statusLabels[box.status] || box.status}
+                        <CardTitle className="text-base font-mono">{order.order_id}</CardTitle>
+                        <Badge className={statusLabels[order.status]?.color || ''}>
+                          {statusLabels[order.status] || order.status}
                         </Badge>
                       </div>
-                      {box.item_description && <p className="text-xs text-gray-600 mt-1">📦 {box.item_description}</p>}
+                      {order.items && order.items.length > 0 && (
+                        <div className="mt-2 text-xs text-gray-600">
+                          <p className="font-semibold mb-1">Gồm {order.items.length} thùng hàng:</p>
+                          <ul className="list-disc pl-4 space-y-0.5">
+                            {order.items.map((item, idx) => (
+                              <li key={idx}>Size {item.size}: {item.item_description}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </CardHeader>
                     <CardContent className="pt-0 flex gap-2">
                       <Button size="sm" variant="outline" className="w-full" onClick={() => {
-                        setScannedBoxId(box.box_id);
-                        setBoxInfo(box);
+                        setScannedorderId(order.order_id);
+                        setorderInfo(order);
                         setActiveTab('scan');
                       }}>Cập nhật trạng thái</Button>
                     </CardContent>
@@ -498,3 +512,4 @@ const ShipperApp = () => {
 };
 
 export default ShipperApp;
+

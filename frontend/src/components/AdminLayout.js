@@ -6,10 +6,10 @@ const AdminLayout = ({ children }) => {
   
   const navItems = [
     { path: '/doanh_nghiep', label: '📊 Dashboard', testId: 'nav-dashboard' },
-    { path: '/doanh_nghiep/boxes', label: '📦 Thùng Hàng', testId: 'nav-boxes' },
-    { path: '/doanh_nghiep/customers', label: '👤 Khách Hàng', testId: 'nav-customers' },
-    { path: '/doanh_nghiep/shippers', label: '🚚 Shippers', testId: 'nav-shippers' },
-    { path: '/doanh_nghiep/employees', label: '💼 Nhân Viên', testId: 'nav-employees' },
+    { path: '/doanh_nghiep/boxes', label: '📦 Đơn Hàng', testId: 'nav-boxes' },
+    { path: '/doanh_nghiep/customers', label: '👥 Khách Hàng', testId: 'nav-customers' },
+    { path: '/doanh_nghiep/shippers', label: '🛵 Shippers', testId: 'nav-shippers' },
+    { path: '/doanh_nghiep/employees', label: '👔 Nhân viên', testId: 'nav-employees' },
   ];
 
   const isActive = (path) => {

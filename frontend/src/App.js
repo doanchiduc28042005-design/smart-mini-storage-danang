@@ -5,7 +5,7 @@ import { AuthProvider, useAuth } from "@/context/AuthContext";
 import AdminLayout from "@/components/AdminLayout";
 
 const AdminDashboard = React.lazy(() => import("@/pages/AdminDashboard"));
-const BoxesManagement = React.lazy(() => import("@/pages/BoxesManagement"));
+const OrdersManagement = React.lazy(() => import("@/pages/OrdersManagement"));
 const CustomersManagement = React.lazy(() => import("@/pages/CustomersManagement"));
 const ShippersManagement = React.lazy(() => import("@/pages/ShippersManagement"));
 const EmployeesManagement = React.lazy(() => import("@/pages/EmployeesManagement"));
@@ -24,10 +24,38 @@ const AIChatbot = React.lazy(() => import("@/components/AIChatbot"));
 const GlobalChatbot = () => {
   const location = useLocation();
   const { user } = useAuth();
+  const [isInactive, setIsInactive] = React.useState(false);
+
+  React.useEffect(() => {
+    let timeoutId;
+    const resetTimer = () => {
+      setIsInactive(false);
+      clearTimeout(timeoutId);
+      // 15 minutes = 15 * 60 * 1000 = 900000 ms
+      timeoutId = setTimeout(() => setIsInactive(true), 900000);
+    };
+
+    if (user && user.role === 'customer' && location.pathname.startsWith('/customer/dashboard')) {
+      resetTimer();
+      window.addEventListener('mousemove', resetTimer);
+      window.addEventListener('keydown', resetTimer);
+      window.addEventListener('scroll', resetTimer);
+      window.addEventListener('click', resetTimer);
+
+      return () => {
+        clearTimeout(timeoutId);
+        window.removeEventListener('mousemove', resetTimer);
+        window.removeEventListener('keydown', resetTimer);
+        window.removeEventListener('scroll', resetTimer);
+        window.removeEventListener('click', resetTimer);
+      };
+    }
+  }, [user, location.pathname]);
   
-  // Chỉ hiển thị cho khách hàng đã đăng nhập
+  // Chỉ hiển thị cho khách hàng đã đăng nhập và đang ở dashboard
   if (!user || user.role !== 'customer') return null;
   if (!location.pathname.startsWith('/customer/dashboard')) return null;
+  if (isInactive) return null;
   
   return (
     <Suspense fallback={null}>
@@ -141,7 +169,7 @@ function App() {
 
               {/* Admin */}
               <Route path="/doanh_nghiep" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
-              <Route path="/doanh_nghiep/boxes" element={<AdminLayout><BoxesManagement /></AdminLayout>} />
+              <Route path="/doanh_nghiep/boxes" element={<AdminLayout><OrdersManagement /></AdminLayout>} />
               <Route path="/doanh_nghiep/customers" element={<AdminLayout><CustomersManagement /></AdminLayout>} />
               <Route path="/doanh_nghiep/shippers" element={<AdminLayout><ShippersManagement /></AdminLayout>} />
               <Route path="/doanh_nghiep/employees" element={<AdminLayout><EmployeesManagement /></AdminLayout>} />

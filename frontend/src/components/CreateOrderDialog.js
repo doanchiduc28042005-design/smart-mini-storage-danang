@@ -127,9 +127,9 @@ const CreateOrderDialog = ({ open, onOpenChange, defaultAddress, onCreated }) =>
       };
 
       const { data } = await createMyOrder(payload);
-      setSuccessBoxes(data.boxes);
+      setSuccessBoxes(data);
       if (onCreated) {
-        onCreated(data.boxes[0]); 
+        onCreated(data); 
       }
     } catch (err) {
       const d = err.response?.data?.detail;
@@ -153,30 +153,17 @@ const CreateOrderDialog = ({ open, onOpenChange, defaultAddress, onCreated }) =>
         {successBoxes ? (
           <div className="space-y-4 py-2">
             <Alert className="border-green-500 bg-green-50">
-              <AlertDescription className="text-green-800">
-                ✅ <strong>Đã tạo {successBoxes.length} đơn thành công!</strong>
+              <AlertDescription className="text-green-800 text-base font-semibold">
+                ✅ Đã tạo đơn hàng thành công!
               </AlertDescription>
             </Alert>
-            <div className="max-h-60 overflow-y-auto space-y-3 p-1">
-              {successBoxes.map((box, idx) => (
-                <div key={box.box_id} className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm border">
-                  <p className="font-bold text-gray-700">Thùng {idx + 1} - Size {box.size}</p>
-                  <p><span className="text-gray-500">Mã đơn:</span> <span className="font-mono font-bold text-base">{box.box_id}</span></p>
-                  <p><span className="text-gray-500">Hàng hóa:</span> {box.item_description}</p>
-                  {box.qr_code_data && (
-                    <div className="mt-3 text-center">
-                      <img src={box.qr_code_data} alt="QR" className="mx-auto w-32 h-32 border rounded bg-white p-1" />
-                    </div>
-                  )}
-                </div>
-              ))}
+            <div className="bg-white p-4 rounded-lg border text-center space-y-2">
+              <p className="text-gray-500">Mã đơn của bạn:</p>
+              <p className="font-mono font-bold text-2xl text-blue-600">{successBoxes.order_id}</p>
+              <p className="text-sm text-gray-500 mt-2">Vui lòng kiểm tra lại đơn trong danh sách bên dưới.</p>
             </div>
-            <div className="bg-gray-100 p-3 rounded-lg mt-2">
-              <p className="text-sm text-gray-700">📍 Lấy tại: {successBoxes[0].pickup_address}</p>
-              <p className="text-sm text-gray-700">🕒 Lịch hẹn: {new Date(successBoxes[0].pickup_time).toLocaleString('vi-VN')}</p>
-            </div>
-            <Button onClick={handleClose} className="w-full mt-2" data-testid="close-success-dialog">
-              ✓ Đóng
+            <Button onClick={handleClose} className="w-full mt-2 bg-green-600 hover:bg-green-700" data-testid="close-success-dialog">
+              ✓ Đóng & Xem Danh Sách
             </Button>
           </div>
         ) : (

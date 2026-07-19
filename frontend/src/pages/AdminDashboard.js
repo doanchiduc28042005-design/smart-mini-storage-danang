@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getDashboardStats, getBoxes } from '@/services/api';
+import { getDashboardStats, getOrders } from '@/services/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import MapView from '@/components/MapView';
@@ -28,7 +28,7 @@ const StatCard = ({ title, value, description, color = 'blue', testId }) => {
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
-  const [boxes, setBoxes] = useState([]);
+  const [orders, setorders] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -39,12 +39,12 @@ const AdminDashboard = () => {
 
   const loadAll = async () => {
     try {
-      const [statsRes, boxesRes] = await Promise.all([
+      const [statsRes, ordersRes] = await Promise.all([
         getDashboardStats(),
-        getBoxes()
+        getOrders()
       ]);
       setStats(statsRes.data);
-      setBoxes(boxesRes.data);
+      setorders(ordersRes.data);
       setLoading(false);
     } catch (error) {
       console.error('Error loading data:', error);
@@ -63,7 +63,7 @@ const AdminDashboard = () => {
     );
   }
 
-  const boxesWithGPS = boxes.filter(b => b.last_latitude && b.last_longitude);
+  const ordersWithGPS = orders.filter(b => b.last_latitude && b.last_longitude);
 
   return (
     <div className="p-6 space-y-6" data-testid="admin-dashboard">
@@ -80,11 +80,11 @@ const AdminDashboard = () => {
       <div>
         <h2 className="text-xl font-semibold text-gray-800 mb-4">📦 Thống Kê Thùng Hàng</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <StatCard title="Tổng Thùng" value={stats?.boxes?.total || 0} color="indigo" testId="stat-total-boxes" />
-          <StatCard title="Chờ Lấy" value={stats?.boxes?.waiting_pickup || 0} color="yellow" testId="stat-waiting-pickup" />
-          <StatCard title="Đã Lấy" value={stats?.boxes?.picked_up || 0} color="blue" testId="stat-picked-up" />
-          <StatCard title="Ở Hub" value={stats?.boxes?.in_hub || 0} color="purple" testId="stat-in-hub" />
-          <StatCard title="Đã Giao" value={stats?.boxes?.delivered || 0} color="green" testId="stat-delivered" />
+          <StatCard title="Tổng Thùng" value={stats?.orders?.total || 0} color="indigo" testId="stat-total-orders" />
+          <StatCard title="Chờ Lấy" value={stats?.orders?.waiting_pickup || 0} color="yellow" testId="stat-waiting-pickup" />
+          <StatCard title="Đã Lấy" value={stats?.orders?.picked_up || 0} color="blue" testId="stat-picked-up" />
+          <StatCard title="Ở Hub" value={stats?.orders?.in_hub || 0} color="purple" testId="stat-in-hub" />
+          <StatCard title="Đã Giao" value={stats?.orders?.delivered || 0} color="green" testId="stat-delivered" />
         </div>
       </div>
 
@@ -105,12 +105,12 @@ const AdminDashboard = () => {
             <MapView
               height="500px"
               testId="admin-map"
-              markers={boxesWithGPS.map(b => ({
-                id: b.box_id,
+              markers={ordersWithGPS.map(b => ({
+                id: b.order_id,
                 lat: b.last_latitude,
                 lng: b.last_longitude,
                 status: b.status,
-                title: `📦 ${b.box_id}`,
+                title: `📦 ${b.order_id}`,
                 description: `KH: ${b.customer_name}`,
                 time: new Date(b.last_updated).toLocaleString('vi-VN')
               }))}
@@ -120,7 +120,7 @@ const AdminDashboard = () => {
               <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-blue-500"></span> Đã Lấy</span>
               <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-purple-500"></span> Ở Hub</span>
               <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-green-500"></span> Đã Giao</span>
-              <span className="ml-auto text-gray-500">Hiển thị {boxesWithGPS.length}/{boxes.length} thùng có GPS</span>
+              <span className="ml-auto text-gray-500">Hiển thị {ordersWithGPS.length}/{orders.length} thùng có GPS</span>
             </div>
           </CardContent>
         </Card>
@@ -129,8 +129,8 @@ const AdminDashboard = () => {
       <div>
         <h2 className="text-xl font-semibold text-gray-800 mb-4">⚡ Thao Tác Nhanh</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Link to="/admin/boxes">
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full" data-testid="link-boxes">
+          <Link to="/admin/orders">
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full" data-testid="link-orders">
               <CardContent className="flex flex-col items-center justify-center p-6">
                 <div className="text-4xl mb-2">📦</div>
                 <p className="font-medium">Quản Lý Thùng</p>
@@ -168,3 +168,4 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
+

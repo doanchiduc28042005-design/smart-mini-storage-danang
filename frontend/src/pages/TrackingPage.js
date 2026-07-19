@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getBox, getBoxHistory } from '@/services/api';
+import { getOrder, getOrderHistory } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -59,32 +59,32 @@ const ProgressBar = ({ currentStatus }) => {
 };
 
 const TrackingPage = () => {
-  const { boxId: paramBoxId } = useParams();
+  const { orderId: paramorderId } = useParams();
   const navigate = useNavigate();
   const [searchInput, setSearchInput] = useState('');
-  const [box, setBox] = useState(null);
+  const [order, setorder] = useState(null);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (paramBoxId) {
-      loadTracking(paramBoxId);
+    if (paramorderId) {
+      loadTracking(paramorderId);
     }
-  }, [paramBoxId]);
+  }, [paramorderId]);
 
-  const loadTracking = async (boxId) => {
+  const loadTracking = async (orderId) => {
     setLoading(true);
     setError('');
-    setBox(null);
+    setorder(null);
     setHistory([]);
 
     try {
-      const [boxRes, historyRes] = await Promise.all([
-        getBox(boxId),
-        getBoxHistory(boxId)
+      const [orderRes, historyRes] = await Promise.all([
+        getOrder(orderId),
+        getOrderHistory(orderId)
       ]);
-      setBox(boxRes.data);
+      setorder(orderRes.data);
       setHistory(historyRes.data);
     } catch (err) {
       setError(err.response?.data?.detail || 'Không tìm thấy thùng hàng. Vui lòng kiểm tra lại mã!');
@@ -115,7 +115,7 @@ const TrackingPage = () => {
           <CardContent className="pt-6">
             <form onSubmit={handleSearch} className="flex gap-2">
               <Input
-                placeholder="Nhập mã thùng (VD: BOX-8D765870)"
+                placeholder="Nhập mã thùng (VD: order-8D765870)"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value.toUpperCase())}
                 className="flex-1"
@@ -148,18 +148,18 @@ const TrackingPage = () => {
           </div>
         )}
 
-        {/* Box Info */}
-        {box && (
+        {/* order Info */}
+        {order && (
           <>
             <Card data-testid="tracking-result">
               <CardHeader>
                 <div className="flex justify-between items-start flex-wrap gap-2">
                   <div>
                     <CardDescription>Mã thùng</CardDescription>
-                    <CardTitle className="text-2xl mt-1">{box.box_id}</CardTitle>
+                    <CardTitle className="text-2xl mt-1">{order.order_id}</CardTitle>
                   </div>
-                  <Badge className={`${statusConfig[box.status]?.color} text-base px-4 py-2`}>
-                    {statusConfig[box.status]?.label || box.status}
+                  <Badge className={`${statusConfig[order.status]?.color} text-base px-4 py-2`}>
+                    {statusConfig[order.status]?.label || order.status}
                   </Badge>
                 </div>
               </CardHeader>
@@ -167,22 +167,22 @@ const TrackingPage = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div>
                     <p className="text-gray-500">Người nhận</p>
-                    <p className="font-medium">{box.customer_name}</p>
+                    <p className="font-medium">{order.customer_name}</p>
                   </div>
                   <div>
                     <p className="text-gray-500">Cập nhật lần cuối</p>
-                    <p className="font-medium">{new Date(box.last_updated).toLocaleString('vi-VN')}</p>
+                    <p className="font-medium">{new Date(order.last_updated).toLocaleString('vi-VN')}</p>
                   </div>
                   <div>
                     <p className="text-gray-500">Ngày tạo</p>
-                    <p className="font-medium">{new Date(box.created_at).toLocaleString('vi-VN')}</p>
+                    <p className="font-medium">{new Date(order.created_at).toLocaleString('vi-VN')}</p>
                   </div>
                 </div>
 
                 {/* Progress Bar */}
                 <div className="mt-6 border-t pt-4">
                   <h3 className="font-semibold text-gray-800 mb-2">Tiến trình giao hàng</h3>
-                  <ProgressBar currentStatus={box.status} />
+                  <ProgressBar currentStatus={order.status} />
                 </div>
               </CardContent>
             </Card>
@@ -259,22 +259,22 @@ const TrackingPage = () => {
                         time: new Date(h.timestamp).toLocaleString('vi-VN')
                       }));
                     
-                    const hasCurrentLocation = box.last_latitude && box.last_longitude;
+                    const hasCurrentLocation = order.last_latitude && order.last_longitude;
                     const lastHistory = historyMarkers.length > 0 ? historyMarkers[historyMarkers.length - 1] : null;
                     
                     const isSameAsLast = hasCurrentLocation && lastHistory && 
-                                         Math.abs(lastHistory.lat - box.last_latitude) < 0.000001 &&
-                                         Math.abs(lastHistory.lng - box.last_longitude) < 0.000001;
+                                         Math.abs(lastHistory.lat - order.last_latitude) < 0.000001 &&
+                                         Math.abs(lastHistory.lng - order.last_longitude) < 0.000001;
 
                     if (hasCurrentLocation && !isSameAsLast) {
                       historyMarkers.push({
-                        id: 'current-box-location',
-                        lat: box.last_latitude,
-                        lng: box.last_longitude,
-                        status: box.status,
+                        id: 'current-order-location',
+                        lat: order.last_latitude,
+                        lng: order.last_longitude,
+                        status: order.status,
                         title: 'Vị trí hiện tại',
                         description: 'Vị trí cập nhật mới nhất của thùng hàng',
-                        time: new Date(box.last_updated).toLocaleString('vi-VN')
+                        time: new Date(order.last_updated).toLocaleString('vi-VN')
                       });
                     }
                     
@@ -317,7 +317,7 @@ const TrackingPage = () => {
         )}
 
         {/* Empty State */}
-        {!box && !loading && !error && !paramBoxId && (
+        {!order && !loading && !error && !paramorderId && (
           <Card>
             <CardContent className="pt-6 text-center text-gray-500">
               <p className="text-6xl mb-4">🔍</p>
@@ -336,3 +336,4 @@ const TrackingPage = () => {
 };
 
 export default TrackingPage;
+
