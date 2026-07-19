@@ -15,6 +15,7 @@ const ShippersManagement = () => {
   const [rejectReason, setRejectReason] = useState('');
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
+  const [activeTab, setActiveTab] = useState('all');
 
   useEffect(() => {
     loadShippers();
@@ -70,6 +71,22 @@ const ShippersManagement = () => {
     return '#e5e7eb'; // default gray
   };
 
+  const filteredShippers = shippers.filter(shipper => {
+    const matchesSearch = shipper.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+          shipper.phone?.includes(searchTerm) || 
+          shipper.email?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    if (!matchesSearch) return false;
+    
+    if (activeTab === 'all') return true;
+    if (activeTab === 'pending') return shipper.registration_status === 'pending';
+    if (activeTab === 'approved') return shipper.registration_status === 'approved';
+    if (activeTab === 'rejected') return shipper.registration_status === 'rejected';
+    if (activeTab === 'active') return shipper.registration_status === 'approved' && shipper.has_password;
+    
+    return true;
+  });
+
   return (
     <div className="p-6 space-y-6" data-testid="shippers-management">
       <div className="flex justify-between items-center flex-wrap gap-4">
@@ -88,14 +105,29 @@ const ShippersManagement = () => {
         </div>
       </div>
 
+      {/* Tabs */}
+      <div className="flex overflow-x-auto gap-2 pb-2">
+        {['all', 'pending', 'approved', 'rejected', 'active'].map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+              activeTab === tab
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {tab === 'all' && 'Tất cả'}
+            {tab === 'pending' && 'Chờ xét duyệt'}
+            {tab === 'approved' && 'Đã duyệt'}
+            {tab === 'rejected' && 'Bị từ chối'}
+            {tab === 'active' && 'Đang Hoạt Động'}
+          </button>
+        ))}
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {shippers
-          .filter(shipper => 
-            shipper.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-            shipper.phone?.includes(searchTerm) || 
-            shipper.email?.toLowerCase().includes(searchTerm.toLowerCase())
-          )
-          .map((shipper) => (
+        {filteredShippers.map((shipper) => (
           <Card key={shipper.id} className="hover:shadow-lg transition-shadow border-2" style={{ borderColor: getBorderColor(shipper.registration_status) }}>
             <CardHeader className="pb-2">
               <div className="flex justify-between items-start">
@@ -109,6 +141,8 @@ const ShippersManagement = () => {
                   <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Chờ Duyệt</Badge>
                 ) : shipper.registration_status === 'rejected' ? (
                   <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Bị Từ Chối</Badge>
+                ) : shipper.has_password ? (
+                  <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Đang Hoạt Động</Badge>
                 ) : (
                   <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Đã Duyệt</Badge>
                 )}

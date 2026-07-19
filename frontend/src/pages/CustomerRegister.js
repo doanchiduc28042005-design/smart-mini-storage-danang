@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import PasswordStrength from '@/components/PasswordStrength';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -146,6 +147,7 @@ const CustomerRegister = () => {
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
                   data-testid="register-password"
                 />
+                <PasswordStrength password={form.password} />
               </div>
 
               <div className="space-y-1">

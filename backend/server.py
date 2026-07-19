@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, BackgroundTasks
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -182,14 +182,18 @@ def create_access_token(user_id: str, email: str) -> str:
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
-async def get_current_user(request: Request) -> dict:
-    token = request.cookies.get("access_token")
+async def get_current_user(request: Request):
+    # Prioritize Authorization header over cookies
+    token = None
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:]
+        
     if not token:
-        auth_header = request.headers.get("Authorization", "")
-        if auth_header.startswith("Bearer "):
-            token = auth_header[7:]
+        token = request.cookies.get("access_token")
+        
     if not token:
-        raise HTTPException(status_code=401, detail="Chưa đăng nhập")
+        raise HTTPException(status_code=401, detail="Không có quyền truy cập")
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         if payload.get("role") == "shipper":
@@ -261,6 +265,8 @@ class Shipper(BaseModel):
     password_hash: str = ""
     status: str = "active"  # active, inactive
     registration_status: str = "pending" # pending, approved, rejected
+    rejection_reason: str = ""
+    has_password: bool = False
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class ShipperCreate(BaseModel):
@@ -661,7 +667,7 @@ async def register_shipper(input: ShipperCreate):
     return shipper
 
 @api_router.put("/shippers/{shipper_id}/approve")
-async def approve_shipper(shipper_id: str, request: Request):
+async def approve_shipper(shipper_id: str, request: Request, background_tasks: BackgroundTasks):
     # Retrieve the shipper
     shipper = await db.shippers.find_one({"id": shipper_id})
     if not shipper:
@@ -681,12 +687,12 @@ async def approve_shipper(shipper_id: str, request: Request):
     # Send email
     frontend_url = os.environ.get('FRONTEND_URL', 'https://doanchiduc28042005-design.github.io/smart-mini-storage-danang')
     setup_link = f"{frontend_url}/shipper/setup-password"
-    send_shipper_approval_email(shipper['email'], shipper_code, setup_link)
+    background_tasks.add_task(send_shipper_approval_email, shipper['email'], shipper_code, setup_link)
     
-    return {"message": "Đã duyệt thành công và gửi email", "shipper_code": shipper_code}
+    return {"message": "Đã duyệt thành công và đang gửi email", "shipper_code": shipper_code}
 
 @api_router.put("/shippers/{shipper_id}/reject")
-async def reject_shipper(shipper_id: str, input: ShipperReject):
+async def reject_shipper(shipper_id: str, input: ShipperReject, background_tasks: BackgroundTasks):
     shipper = await db.shippers.find_one({"id": shipper_id})
     if not shipper:
         raise HTTPException(status_code=404, detail="Shipper không tồn tại")
@@ -699,9 +705,9 @@ async def reject_shipper(shipper_id: str, input: ShipperReject):
     )
     
     # Send email
-    send_shipper_rejection_email(shipper['email'], input.reason)
+    background_tasks.add_task(send_shipper_rejection_email, shipper['email'], input.reason)
     
-    return {"message": "Đã từ chối hồ sơ và gửi email thông báo"}
+    return {"message": "Đã từ chối hồ sơ và đang gửi email thông báo"}
 
 @api_router.post("/shippers/setup-password")
 async def setup_shipper_password(input: ShipperSetupPassword):
@@ -756,8 +762,9 @@ async def get_shippers():
     shippers = await db.shippers.find({}, {"_id": 0}).to_list(1000)
     
     for shipper in shippers:
-        if isinstance(shipper['created_at'], str):
+        if isinstance(shipper.get('created_at'), str):
             shipper['created_at'] = datetime.fromisoformat(shipper['created_at'])
+        shipper['has_password'] = bool(shipper.get('password_hash'))
     
     return shippers
 

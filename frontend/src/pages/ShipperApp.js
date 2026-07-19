@@ -42,7 +42,7 @@ const ShipperApp = () => {
 
   useEffect(() => {
     if (!authLoading && (!user || user.role !== 'shipper')) {
-      navigate('/shipper/login');
+      navigate('/shipper/login', { replace: true });
     }
   }, [user, authLoading, navigate]);
 
