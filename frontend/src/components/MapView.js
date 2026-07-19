@@ -47,6 +47,14 @@ const statusLabels = {
   'DELIVERED': '✅ Đã Giao',
 };
 
+const iconCache = {};
+const getCachedIcon = (color) => {
+  if (!iconCache[color]) {
+    iconCache[color] = createIcon(color);
+  }
+  return iconCache[color];
+};
+
 // Auto-fit map to markers bounds
 const FitBounds = ({ markers }) => {
   const map = useMap();
@@ -89,7 +97,6 @@ const MapView = ({ markers = [], height = '400px', center = [16.0544, 108.2022],
           <Marker
             key={marker.id || idx}
             position={[marker.lat, marker.lng]}
-            icon={createIcon(marker.color || statusColors[marker.status] || '#6b7280')}
           >
             <Popup>
               <div style={{ fontSize: '13px', minWidth: '180px' }}>
