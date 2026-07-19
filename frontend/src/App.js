@@ -159,7 +159,7 @@ function App() {
               <Route path="/shipper/login" element={<ShipperLogin />} />
               <Route path="/shipper/setup-password" element={<ShipperSetupPassword />} />
               <Route path="/track" element={<TrackingPage />} />
-              <Route path="/track/:boxId" element={<TrackingPage />} />
+              <Route path="/track/:orderId" element={<TrackingPage />} />
 
               {/* Customer auth */}
               <Route path="/customer" element={<CustomerHub />} />
