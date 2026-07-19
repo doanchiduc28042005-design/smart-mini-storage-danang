@@ -4,12 +4,19 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 // Fix default marker icon issue with webpack
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+
+let DefaultIcon = L.icon({
+    iconUrl: icon,
+    shadowUrl: iconShadow,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
 });
+
+L.Marker.prototype.options.icon = DefaultIcon;
 
 // Custom colored markers per status
 const createIcon = (color) => L.divIcon({
@@ -121,6 +128,11 @@ const MapView = ({ markers = [], height = '400px', center = [16.0544, 108.2022],
             </Popup>
           </Marker>
         ))}
+
+        {/* STATIC DEBUG MARKER */}
+        <Marker position={[16.0544, 108.2022]}>
+          <Popup>Static Debug Marker</Popup>
+        </Marker>
 
         {validMarkers.length > 0 && <FitBounds markers={validMarkers} />}
       </MapContainer>
