@@ -160,13 +160,18 @@ async def start_background_tasks():
     asyncio.create_task(cleanup_inactive_shippers_task())
 
 # ============== AUTH HELPERS ==============
+import asyncio
 
-def hash_password(password: str) -> str:
-    salt = bcrypt.gensalt()
-    return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+async def hash_password(password: str) -> str:
+    def _hash():
+        salt = bcrypt.gensalt()
+        return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+    return await asyncio.to_thread(_hash)
 
-def verify_password(plain: str, hashed: str) -> bool:
-    return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
+async def verify_password(plain: str, hashed: str) -> bool:
+    def _verify():
+        return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
+    return await asyncio.to_thread(_verify)
 
 def create_access_token(user_id: str, email: str) -> str:
     payload = {
@@ -432,7 +437,7 @@ async def register_customer(data: CustomerRegister, response: Response):
         "name": data.name.strip(),
         "phone": phone,
         "email": email_lower,
-        "password_hash": hash_password(data.password),
+        "password_hash": await hash_password(data.password),
         "default_pickup_address": data.default_pickup_address.strip(),
         "address": data.default_pickup_address.strip(),
         "has_account": True,
@@ -483,7 +488,7 @@ async def login_customer(data: CustomerLogin, response: Response):
     if not user or not user.get("password_hash"):
         raise HTTPException(status_code=401, detail="Email/SĐT hoặc mật khẩu không đúng")
     
-    if not verify_password(data.password, user["password_hash"]):
+    if not await verify_password(data.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Email/SĐT hoặc mật khẩu không đúng")
     
     token = create_access_token(user["id"], user["email"])
@@ -695,7 +700,7 @@ async def setup_shipper_password(input: ShipperSetupPassword):
     if shipper.get("password_hash"):
         raise HTTPException(status_code=400, detail="Tài khoản này đã có mật khẩu")
         
-    pwd_hash = hash_password(input.password)
+    pwd_hash = await hash_password(input.password)
     await db.shippers.update_one(
         {"shipper_code": input.shipper_code},
         {"$set": {"password_hash": pwd_hash}}
@@ -708,7 +713,7 @@ async def login_shipper(input: ShipperLogin):
     if not shipper or not shipper.get("password_hash"):
         raise HTTPException(status_code=401, detail="Sai mã Shipper hoặc mật khẩu")
         
-    if not bcrypt.checkpw(input.password.encode('utf-8'), shipper['password_hash'].encode('utf-8')):
+    if not await verify_password(input.password, shipper['password_hash']):
         raise HTTPException(status_code=401, detail="Sai mã Shipper hoặc mật khẩu")
         
     token_payload = {
