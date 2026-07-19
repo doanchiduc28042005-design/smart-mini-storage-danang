@@ -33,7 +33,7 @@ export const registerCustomer = (data) => apiClient.post('/auth/register', data)
 export const loginCustomer = (data) => apiClient.post('/auth/login', data);
 export const getMe = () => apiClient.get('/auth/me');
 export const logoutCustomer = () => apiClient.post('/auth/logout');
-export const getMyBoxes = () => apiClient.get('/auth/my-boxes');
+export const getMyOrders = () => apiClient.get('/auth/my-orders');
 export const createMyOrder = (data) => apiClient.post('/auth/create-order', data);
 
 // Customers
@@ -55,14 +55,14 @@ export const approveShipper = (id) => apiClient.put(`/shippers/${id}/approve`);
 export const rejectShipper = (id, data) => apiClient.put(`/shippers/${id}/reject`, data);
 export const setupShipperPassword = (data) => apiClient.post('/shippers/setup-password', data);
 export const loginShipper = (data) => apiClient.post('/shippers/login', data);
-export const getShipperBoxes = (id) => apiClient.get(`/shippers/${id}/boxes`);
+export const getShipperOrders = (id) => apiClient.get(`/shippers/${id}/orders`);
 
-// Boxes
-export const getBoxes = (status) => apiClient.get('/boxes', { params: { status } });
-export const createBox = (data) => apiClient.post('/boxes', data);
-export const getBox = (boxId) => apiClient.get(`/boxes/${boxId}`);
-export const deleteBox = (boxId, reason) => apiClient.delete(`/boxes/${boxId}`, { data: { reason } });
-export const updateBoxLocation = (boxId, data) => apiClient.patch(`/boxes/${boxId}/location`, data);
+// Orders
+export const getOrders = (status) => apiClient.get('/orders', { params: { status } });
+export const createOrder = (data) => apiClient.post('/orders', data);
+export const getOrder = (orderId) => apiClient.get(`/orders/${orderId}`);
+export const deleteOrder = (orderId, reason) => apiClient.delete(`/orders/${orderId}`, { data: { reason } });
+export const updateOrderLocation = (orderId, data) => apiClient.patch(`/orders/${orderId}/location`, data);
 export const processQRScan = (data) => apiClient.post('/qr/scan', data);
 
 // Notifications
@@ -72,10 +72,10 @@ export const markNotificationRead = (notifId) => apiClient.put(`/notifications/$
 
 // QR Scan & Tracking
 export const scanQR = (data) => apiClient.post('/v1/storage/scan', data);
-export const getBoxHistory = (boxId) => apiClient.get(`/boxes/${boxId}/history`);
+export const getOrderHistory = (orderId) => apiClient.get(`/orders/${orderId}/history`);
 
 // QR Generation
-export const generateQR = (boxId) => apiClient.post('/qr/generate', null, { params: { box_id: boxId } });
+export const generateQR = (orderId) => apiClient.post('/qr/generate', null, { params: { order_id: orderId } });
 
 // Dashboard
 export const getDashboardStats = () => apiClient.get('/dashboard/stats');

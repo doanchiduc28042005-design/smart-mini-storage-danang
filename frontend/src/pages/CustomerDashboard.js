@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getMyBoxes, setAuthToken, getNotifications, markNotificationRead } from '@/services/api';
+import { getMyOrders, setAuthToken, getNotifications, markNotificationRead } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,7 +18,7 @@ const statusLabels = {
 const CustomerDashboard = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const [boxes, setBoxes] = useState([]);
+  const [orders, setOrders] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [showCreateOrder, setShowCreateOrder] = useState(false);
@@ -26,14 +26,14 @@ const CustomerDashboard = () => {
   const [showNotifDialog, setShowNotifDialog] = useState(false);
 
   useEffect(() => {
-    loadBoxes();
+    loadOrders();
     loadNotifications();
   }, []);
 
-  const loadBoxes = async () => {
+  const loadOrders = async () => {
     try {
-      const { data } = await getMyBoxes();
-      setBoxes(data);
+      const { data } = await getMyOrders();
+      setOrders(data);
     } catch (e) {
       console.error(e);
     } finally {
@@ -68,13 +68,15 @@ const CustomerDashboard = () => {
 
   if (!user) return null;
 
-  const filteredBoxes = boxes.filter(b => 
-    b.box_id.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    (b.item_description && b.item_description.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredOrders = orders.filter(o => {
+    const query = searchQuery.toLowerCase();
+    if (o.order_id.toLowerCase().includes(query)) return true;
+    if (o.items && o.items.some(i => i.item_description.toLowerCase().includes(query))) return true;
+    return false;
+  });
 
-  const activeBoxes = filteredBoxes.filter(b => b.status !== 'DELIVERED');
-  const completedBoxes = filteredBoxes.filter(b => b.status === 'DELIVERED');
+  const activeOrders = filteredOrders.filter(o => o.status !== 'DELIVERED');
+  const completedOrders = filteredOrders.filter(o => o.status === 'DELIVERED');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 p-4" data-testid="customer-dashboard">
@@ -170,11 +172,11 @@ const CustomerDashboard = () => {
         {/* Active Orders */}
         <div>
           <h2 className="text-xl font-bold text-gray-900 mb-3">
-            🔄 Đơn đang xử lý ({activeBoxes.length})
+            🔄 Đơn đang xử lý ({activeOrders.length})
           </h2>
           {loading ? (
             <p className="text-gray-500 text-center py-6">Đang tải...</p>
-          ) : activeBoxes.length === 0 ? (
+          ) : activeOrders.length === 0 ? (
             <Card>
               <CardContent className="pt-6 text-center text-gray-500">
                 <div className="text-5xl mb-2">📭</div>
@@ -186,40 +188,42 @@ const CustomerDashboard = () => {
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {activeBoxes.map((box) => (
-                <Card key={box.box_id} className="hover:shadow-md transition-shadow">
+              {activeOrders.map((order) => (
+                <Card key={order.order_id} className="hover:shadow-md transition-shadow">
                   <CardHeader className="pb-2">
                     <div className="flex justify-between items-start gap-2">
-                      <CardTitle className="text-base font-mono">{box.box_id}</CardTitle>
-                      <Badge className={statusLabels[box.status]?.color}>
-                        {statusLabels[box.status]?.label || box.status}
+                      <CardTitle className="text-base font-mono">{order.order_id}</CardTitle>
+                      <Badge className={statusLabels[order.status]?.color}>
+                        {statusLabels[order.status]?.label || order.status}
                       </Badge>
                     </div>
-                    {box.size && (
-                      <Badge variant="outline" className="mt-2 mr-2 border-indigo-200 text-indigo-700 bg-indigo-50">
-                        Size {box.size}
-                      </Badge>
-                    )}
-                    {box.item_description && (
-                      <CardDescription className="text-xs mt-2">
-                        📦 {box.item_description}
-                      </CardDescription>
+                    {order.items && order.items.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        <p className="text-xs font-semibold text-gray-700">Gồm {order.items.length} thùng hàng:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {order.items.map((item, idx) => (
+                            <Badge key={idx} variant="outline" className="border-indigo-200 text-indigo-700 bg-indigo-50">
+                              Size {item.size}: {item.item_description}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
                     )}
                   </CardHeader>
                   <CardContent className="space-y-2 text-xs">
-                    {box.pickup_time && (
+                    {order.pickup_time && (
                       <p className="text-gray-600">
-                        🕐 Hẹn: <strong>{new Date(box.pickup_time).toLocaleString('vi-VN')}</strong>
+                        🕐 Hẹn: <strong>{new Date(order.pickup_time).toLocaleString('vi-VN')}</strong>
                       </p>
                     )}
-                    {box.pickup_address && (
-                      <p className="text-gray-600">📍 {box.pickup_address}</p>
+                    {order.pickup_address && (
+                      <p className="text-gray-600">📍 {order.pickup_address}</p>
                     )}
                     <p className="text-gray-500">
-                      Cập nhật: {new Date(box.last_updated).toLocaleString('vi-VN')}
+                      Cập nhật: {new Date(order.last_updated).toLocaleString('vi-VN')}
                     </p>
-                    <Link to={`/track/${box.box_id}`}>
-                      <Button size="sm" variant="outline" className="w-full mt-1" data-testid={`track-${box.box_id}`}>
+                    <Link to={`/track/${order.order_id}`}>
+                      <Button size="sm" variant="outline" className="w-full mt-1" data-testid={`track-${order.order_id}`}>
                         🗺️ Xem chi tiết & bản đồ
                       </Button>
                     </Link>
@@ -231,34 +235,29 @@ const CustomerDashboard = () => {
         </div>
 
         {/* Completed Orders */}
-        {completedBoxes.length > 0 && (
+        {completedOrders.length > 0 && (
           <div>
             <h2 className="text-xl font-bold text-gray-900 mb-3">
-              ✅ Đơn đã hoàn thành ({completedBoxes.length})
+              ✅ Đơn đã hoàn thành ({completedOrders.length})
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {completedBoxes.map((box) => (
-                <Card key={box.box_id} className="opacity-80">
+              {completedOrders.map((order) => (
+                <Card key={order.order_id} className="opacity-80">
                   <CardHeader className="pb-2">
                     <div className="flex justify-between items-start">
-                      <CardTitle className="text-base font-mono">{box.box_id}</CardTitle>
-                      <Badge className={statusLabels[box.status]?.color}>
-                        {statusLabels[box.status]?.label}
+                      <CardTitle className="text-base font-mono">{order.order_id}</CardTitle>
+                      <Badge className={statusLabels[order.status]?.color}>
+                        {statusLabels[order.status]?.label}
                       </Badge>
                     </div>
-                    {box.size && (
-                      <Badge variant="outline" className="mt-2 mr-2 border-indigo-200 text-indigo-700 bg-indigo-50">
-                        Size {box.size}
-                      </Badge>
-                    )}
-                    {box.item_description && (
-                      <CardDescription className="text-xs mt-2">
-                        📦 {box.item_description}
-                      </CardDescription>
+                    {order.items && order.items.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        <p className="text-xs font-semibold text-gray-700">Gồm {order.items.length} thùng hàng</p>
+                      </div>
                     )}
                   </CardHeader>
                   <CardContent>
-                    <Link to={`/track/${box.box_id}`}>
+                    <Link to={`/track/${order.order_id}`}>
                       <Button size="sm" variant="outline" className="w-full">
                         🗺️ Xem lại lộ trình
                       </Button>
@@ -275,12 +274,11 @@ const CustomerDashboard = () => {
         </div>
       </div>
 
-      {/* Create Order Dialog */}
       <CreateOrderDialog
         open={showCreateOrder}
         onOpenChange={setShowCreateOrder}
         defaultAddress={user.default_pickup_address}
-        onCreated={() => loadBoxes()}
+        onCreated={() => loadOrders()}
       />
 
       {/* Notifications Dialog */}
