@@ -967,6 +967,19 @@ async def update_box_location(box_id: str, data: LocationUpdate):
         updated_box['last_updated'] = datetime.fromisoformat(updated_box['last_updated'])
     if isinstance(updated_box['created_at'], str):
         updated_box['created_at'] = datetime.fromisoformat(updated_box['created_at'])
+        
+    # Create tracking history for map visibility
+    tracking = TrackingHistory(
+        box_id=box_id,
+        shipper_id="admin",
+        shipper_name="Hệ thống",
+        status=updated_box.get('status', 'WAITING_FOR_PICKUP'),
+        notes="Hệ thống cập nhật vị trí",
+        latitude=data.latitude,
+        longitude=data.longitude,
+        timestamp=now
+    )
+    await db.tracking_history.insert_one(tracking.model_dump())
     
     return {"success": True, "message": "Đã cập nhật vị trí", "box": updated_box}
 
@@ -1007,14 +1020,18 @@ async def process_qr_scan(data: QRScanRequest):
     )
     
     # Create tracking history
+    hist_lat = data.latitude if data.latitude is not None else box.get('last_latitude')
+    hist_lng = data.longitude if data.longitude is not None else box.get('last_longitude')
+    
     tracking = TrackingHistory(
         box_id=data.box_id,
         shipper_id=data.shipper_id,
         shipper_name=shipper['name'],
         status=data.status,
         notes=data.notes,
-        latitude=data.latitude,
-        longitude=data.longitude,
+        latitude=hist_lat,
+        longitude=hist_lng,
+
         timestamp=now
     )
     

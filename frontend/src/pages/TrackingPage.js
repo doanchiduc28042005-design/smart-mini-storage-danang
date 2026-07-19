@@ -245,19 +245,41 @@ const TrackingPage = () => {
                   height="400px"
                   testId="customer-map"
                   showPath={true}
-                  markers={history
-                    .filter(h => h.latitude && h.longitude)
-                    .reverse()
-                    .map((h, idx) => ({
-                      id: h.id,
-                      lat: h.latitude,
-                      lng: h.longitude,
-                      status: h.status,
-                      title: `${statusConfig[h.status]?.label || h.status}`,
-                      description: `Shipper: ${h.shipper_name}${h.notes ? ' • ' + h.notes : ''}`,
-                      time: new Date(h.timestamp).toLocaleString('vi-VN')
-                    }))
-                  }
+                  markers={(() => {
+                    const historyMarkers = history
+                      .filter(h => h.latitude && h.longitude)
+                      .reverse()
+                      .map((h, idx) => ({
+                        id: h.id,
+                        lat: h.latitude,
+                        lng: h.longitude,
+                        status: h.status,
+                        title: `${statusConfig[h.status]?.label || h.status}`,
+                        description: `Shipper: ${h.shipper_name}${h.notes ? ' • ' + h.notes : ''}`,
+                        time: new Date(h.timestamp).toLocaleString('vi-VN')
+                      }));
+                    
+                    const hasCurrentLocation = box.last_latitude && box.last_longitude;
+                    const lastHistory = historyMarkers.length > 0 ? historyMarkers[historyMarkers.length - 1] : null;
+                    
+                    const isSameAsLast = hasCurrentLocation && lastHistory && 
+                                         Math.abs(lastHistory.lat - box.last_latitude) < 0.000001 &&
+                                         Math.abs(lastHistory.lng - box.last_longitude) < 0.000001;
+
+                    if (hasCurrentLocation && !isSameAsLast) {
+                      historyMarkers.push({
+                        id: 'current-box-location',
+                        lat: box.last_latitude,
+                        lng: box.last_longitude,
+                        status: box.status,
+                        title: 'Vị trí hiện tại',
+                        description: 'Vị trí cập nhật mới nhất của thùng hàng',
+                        time: new Date(box.last_updated).toLocaleString('vi-VN')
+                      });
+                    }
+                    
+                    return historyMarkers;
+                  })()}
                 />
                 <p className="text-xs text-gray-500 mt-2 text-center">
                   💡 Đường nét đứt thể hiện hành trình của thùng hàng
