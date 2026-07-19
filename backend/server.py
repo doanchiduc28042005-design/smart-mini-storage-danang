@@ -745,6 +745,7 @@ async def login_shipper(input: ShipperLogin):
     if isinstance(shipper_dict.get('created_at'), str):
         shipper_dict['created_at'] = datetime.fromisoformat(shipper_dict['created_at'])
     
+    shipper_dict['role'] = 'shipper'
     shipper_dict.pop('_id', None)
     shipper_dict.pop('password_hash', None)
         
