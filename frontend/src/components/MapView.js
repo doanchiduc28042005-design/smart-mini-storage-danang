@@ -18,7 +18,27 @@ let DefaultIcon = L.icon({
 
 L.Marker.prototype.options.icon = DefaultIcon;
 
-
+// Custom colored markers per status
+const createIcon = (color) => L.divIcon({
+  className: 'custom-map-marker',
+  html: `<div style="
+    background-color: ${color};
+    width: 30px;
+    height: 30px;
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    border: 3px solid white;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  ">
+    <div style="transform: rotate(45deg); color: white; font-weight: bold; font-size: 12px;">📦</div>
+  </div>`,
+  iconSize: [30, 30],
+  iconAnchor: [15, 30],
+  popupAnchor: [0, -30],
+});
 
 const statusColors = {
   'WAITING_FOR_PICKUP': '#eab308', // yellow
@@ -34,26 +54,10 @@ const statusLabels = {
   'DELIVERED': '✅ Đã Giao',
 };
 
-const createColoredPinSVG = (color) => {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${color}" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-    <circle cx="12" cy="10" r="3" fill="white"></circle>
-  </svg>`;
-  return `data:image/svg+xml;base64,${btoa(svg)}`;
-};
-
 const iconCache = {};
 const getCachedIcon = (color) => {
   if (!iconCache[color]) {
-    iconCache[color] = L.icon({
-      iconUrl: createColoredPinSVG(color),
-      iconSize: [30, 40],
-      iconAnchor: [15, 40],
-      popupAnchor: [0, -40],
-      shadowUrl: iconShadow,
-      shadowSize: [41, 41],
-      shadowAnchor: [12, 41]
-    });
+    iconCache[color] = createIcon(color);
   }
   return iconCache[color];
 };
@@ -100,7 +104,6 @@ const MapView = ({ markers = [], height = '400px', center = [16.0544, 108.2022],
           <Marker
             key={marker.id || idx}
             position={[marker.lat, marker.lng]}
-            icon={getCachedIcon(marker.color || statusColors[marker.status] || '#6b7280')}
           >
             <Popup>
               <div style={{ fontSize: '13px', minWidth: '180px' }}>

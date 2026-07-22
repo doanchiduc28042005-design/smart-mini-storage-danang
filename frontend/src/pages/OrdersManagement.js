@@ -213,6 +213,19 @@ const OrdersManagement = () => {
         {order.pickup_address && (
           <p className="text-xs text-gray-600">📍 {order.pickup_address}</p>
         )}
+        {order.delivery_method && (
+          <p className="text-xs text-indigo-600 font-medium">
+            🚚 {order.delivery_method === 'self_pickup' ? 'Tự đến trạm' : 'Ship tận nơi'}
+            {order.shipping_fee != null && (
+              <span className="ml-1">
+                — {order.shipping_fee === 0 ? <span className="text-green-600">Miễn phí</span> : `${order.shipping_fee.toLocaleString()} VND`}
+              </span>
+            )}
+            {order.rental_months && order.rental_months >= 3 && (
+              <span className="ml-1 text-green-600">(Thuê {order.rental_months}T)</span>
+            )}
+          </p>
+        )}
         <p className="text-xs text-gray-500">
           Cập nhật: {new Date(order.last_updated).toLocaleString('vi-VN')}
         </p>
@@ -541,6 +554,97 @@ const OrdersManagement = () => {
                   </div>
                 </div>
               </div>
+              
+              {/* Shipping fee details */}
+              {selectedorder.delivery_method && (
+                <div className="bg-orange-50 p-4 rounded-lg border border-orange-200 space-y-3">
+                  <h4 className="font-bold text-orange-900 flex items-center gap-2">
+                    <span>🚚</span> Phí Ship Giao Nhận
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm font-semibold text-orange-800">Phương thức:</p>
+                      <p className="text-gray-800 mt-1 font-medium">
+                        {selectedorder.delivery_method === 'self_pickup'
+                          ? '🏪 Tự mang đến trạm (Miễn phí)'
+                          : '🏍️ Shipper giao tận nơi'}
+                      </p>
+                    </div>
+                    {selectedorder.rental_months && (
+                      <div>
+                        <p className="text-sm font-semibold text-orange-800">Thời hạn thuê:</p>
+                        <p className="text-gray-800 mt-1 font-medium">
+                          {selectedorder.rental_months} tháng
+                          {selectedorder.rental_months >= 6 && <span className="ml-1 text-green-600 text-xs">(Miễn phí ship 2 chiều)</span>}
+                          {selectedorder.rental_months >= 3 && selectedorder.rental_months < 6 && <span className="ml-1 text-green-600 text-xs">(Miễn phí ship chiều gửi)</span>}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {selectedorder.shipping_fee_details && (
+                    <div className="bg-white p-3 rounded border border-orange-200 space-y-1 text-sm">
+                      {selectedorder.shipping_fee_details.breakdown && (
+                        <>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Phí cơ bản / lượt:</span>
+                            <span>{(selectedorder.shipping_fee_details.breakdown.base_fee || 0).toLocaleString()} VND</span>
+                          </div>
+                          {selectedorder.shipping_fee_details.breakdown.distance_surcharge > 0 && (
+                            <div className="flex justify-between text-orange-700">
+                              <span>Phí vượt khoảng cách ({selectedorder.shipping_fee_details.breakdown.distance_km} km):</span>
+                              <span>+{selectedorder.shipping_fee_details.breakdown.distance_surcharge.toLocaleString()} VND</span>
+                            </div>
+                          )}
+                          {selectedorder.shipping_fee_details.breakdown.stair_fee > 0 && (
+                            <div className="flex justify-between text-orange-700">
+                              <span>Phí bê vác (tầng {selectedorder.shipping_fee_details.breakdown.floor_number}):</span>
+                              <span>+{selectedorder.shipping_fee_details.breakdown.stair_fee.toLocaleString()} VND</span>
+                            </div>
+                          )}
+                          {selectedorder.shipping_fee_details.breakdown.bulk_discount > 0 && (
+                            <div className="flex justify-between text-green-700">
+                              <span>Giảm giá gom thùng:</span>
+                              <span>-{selectedorder.shipping_fee_details.breakdown.bulk_discount.toLocaleString()} VND/lượt</span>
+                            </div>
+                          )}
+                          {(selectedorder.shipping_fee_details.breakdown.outbound_discount > 0 || selectedorder.shipping_fee_details.breakdown.return_discount > 0) && (
+                            <div className="flex justify-between text-green-700">
+                              <span>Ưu đãi thuê dài hạn:</span>
+                              <span>-{((selectedorder.shipping_fee_details.breakdown.outbound_discount || 0) + (selectedorder.shipping_fee_details.breakdown.return_discount || 0)).toLocaleString()} VND</span>
+                            </div>
+                          )}
+                        </>
+                      )}
+                      <div className="border-t pt-1 mt-1 flex justify-between">
+                        <span className="text-gray-600">Lượt GỬI:</span>
+                        <span className="font-medium">{selectedorder.shipping_fee_details.outbound_fee === 0 ? <span className="text-green-600">Miễn phí ✓</span> : `${(selectedorder.shipping_fee_details.outbound_fee || 0).toLocaleString()} VND`}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Lượt TRẢ:</span>
+                        <span className="font-medium">{selectedorder.shipping_fee_details.return_fee === 0 ? <span className="text-green-600">Miễn phí ✓</span> : `${(selectedorder.shipping_fee_details.return_fee || 0).toLocaleString()} VND`}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="bg-orange-100 rounded-md p-3 text-center">
+                    <p className="text-sm font-semibold text-orange-800">Tổng phí ship (2 lượt)</p>
+                    <p className="text-2xl font-bold text-orange-700">
+                      {selectedorder.shipping_fee != null
+                        ? (selectedorder.shipping_fee === 0 ? 'Miễn phí' : `${selectedorder.shipping_fee.toLocaleString()} VND`)
+                        : 'N/A'}
+                    </p>
+                  </div>
+
+                  {selectedorder.shipping_fee_details?.notes && selectedorder.shipping_fee_details.notes.length > 0 && (
+                    <div className="text-xs text-gray-600 space-y-0.5">
+                      {selectedorder.shipping_fee_details.notes.map((note, i) => (
+                        <p key={i}>💡 {note}</p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               
               <DialogFooter className="mt-6">
                 <Button variant="outline" onClick={() => setShowDetailsDialog(false)}>Đóng</Button>

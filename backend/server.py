@@ -362,6 +362,12 @@ class CustomerOrderCreate(BaseModel):
     pickup_time: str  # ISO datetime string
     pickup_address: Optional[str] = None  # Fallback to customer default
     accept_no_prohibited: bool
+    # Shipping options
+    delivery_method: str = "standard"  # 'standard' or 'self_pickup'
+    distance_km: float = 3.0  # Distance from nearest station in km
+    floor_number: int = 0  # 0 = ground floor
+    has_elevator: bool = True
+    rental_months: int = 1  # Expected rental duration
 
 
 class TrackingHistory(BaseModel):
@@ -394,6 +400,114 @@ class QRScanRequest(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
 
+
+# ============== SHIPPING FEE CONSTANTS ==============
+SHIPPING_BASE_FEE = 20000        # 20,000 VND per trip (within 5km)
+SHIPPING_EXTRA_KM_FEE = 5000     # +5,000 VND per km beyond 5km
+SHIPPING_MAX_FREE_KM = 5         # Free distance threshold
+SHIPPING_STAIR_FEE = 15000       # +15,000 VND for stairs (floor 3+, no elevator)
+SHIPPING_BULK_FEE = 5000         # +5,000 VND per extra box (2nd box onwards)
+
+def calculate_shipping_fee(delivery_method: str, distance_km: float, floor_number: int, 
+                           has_elevator: bool, rental_months: int, num_boxes: int) -> dict:
+    """Calculate shipping fee with detailed breakdown.
+    Returns dict with fee breakdown for both outbound (send) and return trips."""
+    
+    if delivery_method == "self_pickup":
+        return {
+            "delivery_method": "self_pickup",
+            "outbound_fee": 0,
+            "return_fee": 0,
+            "total_shipping_fee": 0,
+            "breakdown": {
+                "base_fee": 0,
+                "distance_surcharge": 0,
+                "stair_fee": 0,
+                "bulk_discount": 0,
+                "outbound_discount": 0,
+                "return_discount": 0,
+            },
+            "notes": ["Tự mang đến trạm - Miễn phí hoàn toàn"]
+        }
+    
+    notes = []
+    
+    # --- Base fee per trip ---
+    base_fee = SHIPPING_BASE_FEE
+    
+    # --- Distance surcharge ---
+    distance_surcharge = 0
+    if distance_km > SHIPPING_MAX_FREE_KM:
+        extra_km = distance_km - SHIPPING_MAX_FREE_KM
+        # Round up to nearest integer km
+        import math
+        extra_km_rounded = math.ceil(extra_km)
+        distance_surcharge = extra_km_rounded * SHIPPING_EXTRA_KM_FEE
+        notes.append(f"Phí vượt khoảng cách: +{extra_km_rounded} km x {SHIPPING_EXTRA_KM_FEE:,} VND")
+    
+    # --- Stair fee ---
+    stair_fee = 0
+    if floor_number >= 3 and not has_elevator:
+        stair_fee = SHIPPING_STAIR_FEE
+        notes.append(f"Phí bê vác cầu thang bộ (tầng {floor_number}): +{SHIPPING_STAIR_FEE:,} VND")
+    
+    # --- Bulk discount (applies per trip) ---
+    bulk_discount = 0
+    if num_boxes > 1:
+        # First box pays full, subsequent boxes only pay 5,000 VND handling
+        # Discount = (num_extra_boxes) * (base_fee - bulk_fee)
+        num_extra = num_boxes - 1
+        bulk_discount = num_extra * (base_fee - SHIPPING_BULK_FEE)
+        notes.append(f"Giảm giá gom {num_boxes} thùng: -{bulk_discount:,} VND/lượt")
+    
+    # --- Single trip fee (before long-term discount) ---
+    single_trip_fee = (base_fee * num_boxes) - bulk_discount + distance_surcharge + stair_fee
+    if single_trip_fee < 0:
+        single_trip_fee = 0
+    
+    outbound_fee = single_trip_fee  # Lượt gửi
+    return_fee = single_trip_fee     # Lượt trả
+    
+    # --- Long-term rental discounts ---
+    outbound_discount = 0
+    return_discount = 0
+    
+    if rental_months >= 6:
+        # Free both ways
+        outbound_discount = outbound_fee
+        return_discount = return_fee
+        outbound_fee = 0
+        return_fee = 0
+        notes.append(f"Thuê {rental_months} tháng: Miễn phí ship CẢ 2 CHIỀU")
+    elif rental_months >= 3:
+        # Free outbound only
+        outbound_discount = outbound_fee
+        outbound_fee = 0
+        notes.append(f"Thuê {rental_months} tháng: Miễn phí ship chiều GỬI")
+    
+    total_shipping_fee = outbound_fee + return_fee
+    
+    return {
+        "delivery_method": "standard",
+        "outbound_fee": outbound_fee,
+        "return_fee": return_fee,
+        "total_shipping_fee": total_shipping_fee,
+        "breakdown": {
+            "base_fee": SHIPPING_BASE_FEE,
+            "num_boxes": num_boxes,
+            "distance_km": distance_km,
+            "distance_surcharge": distance_surcharge,
+            "floor_number": floor_number,
+            "has_elevator": has_elevator,
+            "stair_fee": stair_fee,
+            "bulk_discount": bulk_discount,
+            "outbound_discount": outbound_discount,
+            "return_discount": return_discount,
+            "rental_months": rental_months,
+            "single_trip_before_discount": single_trip_fee + (outbound_discount if rental_months >= 3 else 0),
+        },
+        "notes": notes
+    }
 
 # ============== HELPER FUNCTIONS ==============
 
@@ -594,6 +708,16 @@ async def customer_create_order(data: CustomerOrderCreate, current_user: dict = 
             "notes": box_item.notes.strip() if box_item.notes else None
         })
     
+    # Calculate shipping fee
+    shipping_info = calculate_shipping_fee(
+        delivery_method=data.delivery_method,
+        distance_km=data.distance_km,
+        floor_number=data.floor_number,
+        has_elevator=data.has_elevator,
+        rental_months=data.rental_months,
+        num_boxes=len(data.boxes)
+    )
+    
     now = datetime.now(timezone.utc)
     order_doc = {
         "id": str(uuid.uuid4()),
@@ -609,7 +733,12 @@ async def customer_create_order(data: CustomerOrderCreate, current_user: dict = 
         "created_at": now.isoformat(),
         "last_updated": now.isoformat(),
         "last_latitude": None,
-        "last_longitude": None
+        "last_longitude": None,
+        # Shipping fee data
+        "delivery_method": data.delivery_method,
+        "rental_months": data.rental_months,
+        "shipping_fee": shipping_info["total_shipping_fee"],
+        "shipping_fee_details": shipping_info,
     }
     
     await db.orders.insert_one(order_doc)
@@ -617,7 +746,8 @@ async def customer_create_order(data: CustomerOrderCreate, current_user: dict = 
     return {
         "success": True,
         "message": f"Đã tạo đơn hàng thành công! Shipper sẽ đến lấy hàng theo lịch hẹn.",
-        "order_id": order_id
+        "order_id": order_id,
+        "shipping_info": shipping_info
     }
 
 

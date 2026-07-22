@@ -219,6 +219,21 @@ const CustomerDashboard = () => {
                     {order.pickup_address && (
                       <p className="text-gray-600">📍 {order.pickup_address}</p>
                     )}
+                    {order.delivery_method && (
+                      <div className="bg-indigo-50 rounded p-2 mt-1 space-y-0.5">
+                        <p className="text-indigo-800 font-medium">
+                          🚚 {order.delivery_method === 'self_pickup' ? 'Tự mang đến trạm' : 'Shipper giao tận nơi'}
+                        </p>
+                        {order.shipping_fee != null && (
+                          <p className="text-indigo-700">
+                            Phí ship: <strong>{order.shipping_fee === 0 ? 'Miễn phí' : `${order.shipping_fee.toLocaleString()} VND`}</strong>
+                            {order.rental_months && order.rental_months >= 3 && (
+                              <span className="ml-1 text-green-600">(Ưu đãi thuê {order.rental_months} tháng)</span>
+                            )}
+                          </p>
+                        )}
+                      </div>
+                    )}
                     <p className="text-gray-500">
                       Cập nhật: {new Date(order.last_updated).toLocaleString('vi-VN')}
                     </p>

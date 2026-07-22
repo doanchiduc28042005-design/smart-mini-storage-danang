@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { createMyOrder } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,6 +40,73 @@ const BOX_SIZES = {
   }
 };
 
+// Shipping fee constants (mirror backend)
+const SHIPPING_BASE_FEE = 20000;
+const SHIPPING_EXTRA_KM_FEE = 5000;
+const SHIPPING_MAX_FREE_KM = 5;
+const SHIPPING_STAIR_FEE = 15000;
+const SHIPPING_BULK_FEE = 5000;
+
+const calculateShippingFee = (deliveryMethod, distanceKm, floorNumber, hasElevator, rentalMonths, numBoxes) => {
+  if (deliveryMethod === 'self_pickup') {
+    return {
+      outboundFee: 0, returnFee: 0, totalShippingFee: 0,
+      distanceSurcharge: 0, stairFee: 0, bulkDiscount: 0,
+      outboundDiscount: 0, returnDiscount: 0,
+      notes: ['Tự mang đến trạm - Miễn phí hoàn toàn']
+    };
+  }
+
+  const baseFee = SHIPPING_BASE_FEE;
+  let distanceSurcharge = 0;
+  if (distanceKm > SHIPPING_MAX_FREE_KM) {
+    const extraKm = Math.ceil(distanceKm - SHIPPING_MAX_FREE_KM);
+    distanceSurcharge = extraKm * SHIPPING_EXTRA_KM_FEE;
+  }
+
+  let stairFee = 0;
+  if (floorNumber >= 3 && !hasElevator) {
+    stairFee = SHIPPING_STAIR_FEE;
+  }
+
+  let bulkDiscount = 0;
+  if (numBoxes > 1) {
+    bulkDiscount = (numBoxes - 1) * (baseFee - SHIPPING_BULK_FEE);
+  }
+
+  let singleTripFee = (baseFee * numBoxes) - bulkDiscount + distanceSurcharge + stairFee;
+  if (singleTripFee < 0) singleTripFee = 0;
+
+  let outboundFee = singleTripFee;
+  let returnFee = singleTripFee;
+  let outboundDiscount = 0;
+  let returnDiscount = 0;
+  const notes = [];
+
+  if (distanceSurcharge > 0) notes.push(`Phí vượt khoảng cách: +${distanceSurcharge.toLocaleString()} VND`);
+  if (stairFee > 0) notes.push(`Phí bê vác cầu thang bộ (tầng ${floorNumber}): +${stairFee.toLocaleString()} VND`);
+  if (bulkDiscount > 0) notes.push(`Giảm giá gom ${numBoxes} thùng: -${bulkDiscount.toLocaleString()} VND/lượt`);
+
+  if (rentalMonths >= 6) {
+    outboundDiscount = outboundFee;
+    returnDiscount = returnFee;
+    outboundFee = 0;
+    returnFee = 0;
+    notes.push(`Thuê ${rentalMonths} tháng: Miễn phí ship CẢ 2 CHIỀU 🎉`);
+  } else if (rentalMonths >= 3) {
+    outboundDiscount = outboundFee;
+    outboundFee = 0;
+    notes.push(`Thuê ${rentalMonths} tháng: Miễn phí ship chiều GỬI 🎁`);
+  }
+
+  return {
+    outboundFee, returnFee,
+    totalShippingFee: outboundFee + returnFee,
+    distanceSurcharge, stairFee, bulkDiscount,
+    outboundDiscount, returnDiscount, notes
+  };
+};
+
 const CreateOrderDialog = ({ open, onOpenChange, defaultAddress, onCreated }) => {
   const [boxes, setBoxes] = useState([
     { id: Date.now(), size: 'M', item_description: '', notes: '' }
@@ -49,17 +116,25 @@ const CreateOrderDialog = ({ open, onOpenChange, defaultAddress, onCreated }) =>
     pickup_time: '',
     pickup_address: '',
   });
+  const [shipping, setShipping] = useState({
+    delivery_method: 'standard',
+    distance_km: 3,
+    floor_number: 0,
+    has_elevator: true,
+    rental_months: 1,
+  });
   const [acceptNoProhibited, setAcceptNoProhibited] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [successBoxes, setSuccessBoxes] = useState(null);
+  const [successData, setSuccessData] = useState(null);
 
   const resetForm = () => {
     setBoxes([{ id: Date.now(), size: 'M', item_description: '', notes: '' }]);
     setForm({ pickup_date: '', pickup_time: '', pickup_address: '' });
+    setShipping({ delivery_method: 'standard', distance_km: 3, floor_number: 0, has_elevator: true, rental_months: 1 });
     setAcceptNoProhibited(false);
     setError('');
-    setSuccessBoxes(null);
+    setSuccessData(null);
   };
 
   const handleClose = () => {
@@ -81,7 +156,8 @@ const CreateOrderDialog = ({ open, onOpenChange, defaultAddress, onCreated }) =>
     }
   };
 
-  const calculateTotal = () => {
+  // Storage cost
+  const storageCost = useMemo(() => {
     let totalDay = 0;
     let totalMonth = 0;
     boxes.forEach(b => {
@@ -89,7 +165,19 @@ const CreateOrderDialog = ({ open, onOpenChange, defaultAddress, onCreated }) =>
       totalMonth += BOX_SIZES[b.size].priceMonth;
     });
     return { totalDay, totalMonth };
-  };
+  }, [boxes]);
+
+  // Shipping cost (real-time)
+  const shippingCost = useMemo(() => {
+    return calculateShippingFee(
+      shipping.delivery_method,
+      shipping.distance_km,
+      shipping.floor_number,
+      shipping.has_elevator,
+      shipping.rental_months,
+      boxes.length
+    );
+  }, [shipping, boxes.length]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -124,10 +212,16 @@ const CreateOrderDialog = ({ open, onOpenChange, defaultAddress, onCreated }) =>
         pickup_time: pickupISO,
         pickup_address: form.pickup_address.trim() || undefined,
         accept_no_prohibited: true,
+        // Shipping options
+        delivery_method: shipping.delivery_method,
+        distance_km: parseFloat(shipping.distance_km) || 3,
+        floor_number: parseInt(shipping.floor_number) || 0,
+        has_elevator: shipping.has_elevator,
+        rental_months: parseInt(shipping.rental_months) || 1,
       };
 
       const { data } = await createMyOrder(payload);
-      setSuccessBoxes(data);
+      setSuccessData(data);
       if (onCreated) {
         onCreated(data); 
       }
@@ -140,7 +234,6 @@ const CreateOrderDialog = ({ open, onOpenChange, defaultAddress, onCreated }) =>
   };
 
   const today = new Date().toISOString().split('T')[0];
-  const { totalDay, totalMonth } = calculateTotal();
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); else onOpenChange(true); }}>
@@ -150,7 +243,7 @@ const CreateOrderDialog = ({ open, onOpenChange, defaultAddress, onCreated }) =>
           <DialogDescription>Điền thông tin các thùng hàng để shipper đến lấy</DialogDescription>
         </DialogHeader>
 
-        {successBoxes ? (
+        {successData ? (
           <div className="space-y-4 py-2">
             <Alert className="border-green-500 bg-green-50">
               <AlertDescription className="text-green-800 text-base font-semibold">
@@ -159,7 +252,17 @@ const CreateOrderDialog = ({ open, onOpenChange, defaultAddress, onCreated }) =>
             </Alert>
             <div className="bg-white p-4 rounded-lg border text-center space-y-2">
               <p className="text-gray-500">Mã đơn của bạn:</p>
-              <p className="font-mono font-bold text-2xl text-blue-600">{successBoxes.order_id}</p>
+              <p className="font-mono font-bold text-2xl text-blue-600">{successData.order_id}</p>
+              {successData.shipping_info && (
+                <div className="mt-3 text-left bg-blue-50 p-3 rounded-lg text-sm space-y-1">
+                  <p className="font-semibold text-blue-800">🚚 Phí ship:</p>
+                  <p>Lượt gửi: <strong>{successData.shipping_info.outbound_fee?.toLocaleString() || 0} VND</strong></p>
+                  <p>Lượt trả: <strong>{successData.shipping_info.return_fee?.toLocaleString() || 0} VND</strong></p>
+                  <p className="font-bold text-blue-700 pt-1 border-t">
+                    Tổng phí ship: {successData.shipping_info.total_shipping_fee?.toLocaleString() || 0} VND
+                  </p>
+                </div>
+              )}
               <p className="text-sm text-gray-500 mt-2">Vui lòng kiểm tra lại đơn trong danh sách bên dưới.</p>
             </div>
             <Button onClick={handleClose} className="w-full mt-2 bg-green-600 hover:bg-green-700" data-testid="close-success-dialog">
@@ -174,6 +277,7 @@ const CreateOrderDialog = ({ open, onOpenChange, defaultAddress, onCreated }) =>
               </Alert>
             )}
 
+            {/* === BOXES SECTION === */}
             <div className="space-y-4">
               {boxes.map((box, index) => (
                 <div key={box.id} className="p-4 border border-blue-200 rounded-lg bg-white relative shadow-sm">
@@ -238,6 +342,7 @@ const CreateOrderDialog = ({ open, onOpenChange, defaultAddress, onCreated }) =>
 
             <hr className="my-2 border-gray-200" />
 
+            {/* === PICKUP INFO === */}
             <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
               <div className="space-y-2">
                 <Label htmlFor="pickup_date" className="text-gray-700">Ngày lấy hàng *</Label>
@@ -275,17 +380,250 @@ const CreateOrderDialog = ({ open, onOpenChange, defaultAddress, onCreated }) =>
               </div>
             </div>
 
-            {/* Total estimation */}
-            <div className="bg-orange-50 border border-orange-300 rounded-lg p-5 text-center shadow-sm">
-              <p className="text-sm font-medium text-orange-800 mb-2">Tổng chi phí ước tính ({boxes.length} thùng):</p>
-              <p className="text-3xl font-bold text-orange-600">
-                {totalDay.toLocaleString()} VNĐ <span className="text-base font-normal text-orange-700">/ ngày</span>
-              </p>
-              <p className="text-sm font-medium text-orange-700 mt-2 bg-orange-100 inline-block px-3 py-1 rounded-full">
-                (~{totalMonth.toLocaleString()} VNĐ / tháng)
-              </p>
+            <hr className="my-2 border-gray-200" />
+
+            {/* === SHIPPING OPTIONS === */}
+            <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 space-y-4">
+              <h3 className="font-semibold text-indigo-900 flex items-center gap-2">
+                🚚 Phương thức giao nhận
+              </h3>
+
+              {/* Delivery method */}
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-3">
+                  <label
+                    className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                      shipping.delivery_method === 'standard'
+                        ? 'border-indigo-500 bg-indigo-100 shadow-sm'
+                        : 'border-gray-200 bg-white hover:border-indigo-300'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="delivery_method"
+                      value="standard"
+                      checked={shipping.delivery_method === 'standard'}
+                      onChange={() => setShipping({ ...shipping, delivery_method: 'standard' })}
+                      className="accent-indigo-600"
+                    />
+                    <div>
+                      <p className="text-sm font-medium">🏍️ Shipper giao tận nơi</p>
+                      <p className="text-xs text-gray-500">Từ 20.000 VND/lượt</p>
+                    </div>
+                  </label>
+                  <label
+                    className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                      shipping.delivery_method === 'self_pickup'
+                        ? 'border-green-500 bg-green-100 shadow-sm'
+                        : 'border-gray-200 bg-white hover:border-green-300'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="delivery_method"
+                      value="self_pickup"
+                      checked={shipping.delivery_method === 'self_pickup'}
+                      onChange={() => setShipping({ ...shipping, delivery_method: 'self_pickup' })}
+                      className="accent-green-600"
+                    />
+                    <div>
+                      <p className="text-sm font-medium">🏪 Tự mang đến trạm</p>
+                      <p className="text-xs text-green-600 font-semibold">Miễn phí 100%</p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Standard delivery options */}
+              {shipping.delivery_method === 'standard' && (
+                <div className="space-y-3 pl-1">
+                  {/* Distance */}
+                  <div className="space-y-1">
+                    <Label className="text-sm text-gray-700">📍 Khoảng cách từ trạm gần nhất (km)</Label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="range"
+                        min="1"
+                        max="20"
+                        step="1"
+                        value={shipping.distance_km}
+                        onChange={(e) => setShipping({ ...shipping, distance_km: parseFloat(e.target.value) })}
+                        className="flex-1 accent-indigo-600"
+                      />
+                      <span className="text-sm font-mono font-bold text-indigo-700 bg-indigo-100 px-2 py-1 rounded min-w-[50px] text-center">
+                        {shipping.distance_km} km
+                      </span>
+                    </div>
+                    {shipping.distance_km > 5 && (
+                      <p className="text-xs text-orange-600">⚠️ Phí vượt khoảng cách: +{((Math.ceil(shipping.distance_km - 5)) * 5000).toLocaleString()} VND</p>
+                    )}
+                  </div>
+
+                  {/* Floor */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-sm text-gray-700">🏢 Tầng nhà</Label>
+                      <Select
+                        value={String(shipping.floor_number)}
+                        onValueChange={(val) => setShipping({ ...shipping, floor_number: parseInt(val), has_elevator: parseInt(val) < 3 ? true : shipping.has_elevator })}
+                      >
+                        <SelectTrigger className="bg-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="0">Tầng trệt</SelectItem>
+                          <SelectItem value="1">Tầng 1</SelectItem>
+                          <SelectItem value="2">Tầng 2</SelectItem>
+                          <SelectItem value="3">Tầng 3</SelectItem>
+                          <SelectItem value="4">Tầng 4</SelectItem>
+                          <SelectItem value="5">Tầng 5</SelectItem>
+                          <SelectItem value="6">Tầng 6+</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {shipping.floor_number >= 3 && (
+                      <div className="space-y-1">
+                        <Label className="text-sm text-gray-700">🛗 Có thang máy?</Label>
+                        <div className="flex gap-2 mt-1">
+                          <label className={`flex-1 flex items-center justify-center gap-1 p-2 rounded-md border-2 cursor-pointer text-sm transition-all ${
+                            shipping.has_elevator ? 'border-green-400 bg-green-50 font-medium' : 'border-gray-200 bg-white'
+                          }`}>
+                            <input type="radio" name="elevator" checked={shipping.has_elevator} onChange={() => setShipping({ ...shipping, has_elevator: true })} className="sr-only" />
+                            ✅ Có
+                          </label>
+                          <label className={`flex-1 flex items-center justify-center gap-1 p-2 rounded-md border-2 cursor-pointer text-sm transition-all ${
+                            !shipping.has_elevator ? 'border-orange-400 bg-orange-50 font-medium' : 'border-gray-200 bg-white'
+                          }`}>
+                            <input type="radio" name="elevator" checked={!shipping.has_elevator} onChange={() => setShipping({ ...shipping, has_elevator: false })} className="sr-only" />
+                            ❌ Không
+                          </label>
+                        </div>
+                        {!shipping.has_elevator && (
+                          <p className="text-xs text-orange-600 mt-1">⚠️ Phụ phí bê vác: +15.000 VND</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Rental duration */}
+              <div className="space-y-1">
+                <Label className="text-sm text-gray-700">📅 Thời hạn thuê dự kiến</Label>
+                <Select
+                  value={String(shipping.rental_months)}
+                  onValueChange={(val) => setShipping({ ...shipping, rental_months: parseInt(val) })}
+                >
+                  <SelectTrigger className="bg-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1 tháng</SelectItem>
+                    <SelectItem value="2">2 tháng</SelectItem>
+                    <SelectItem value="3">3 tháng ⭐ Miễn phí ship chiều gửi</SelectItem>
+                    <SelectItem value="6">6 tháng 🎉 Miễn phí ship 2 chiều</SelectItem>
+                    <SelectItem value="12">12 tháng 🎉 Miễn phí ship 2 chiều</SelectItem>
+                  </SelectContent>
+                </Select>
+                {shipping.rental_months >= 3 && shipping.rental_months < 6 && (
+                  <p className="text-xs text-green-600 font-medium mt-1">🎁 Ưu đãi: Miễn phí ship chiều gửi (lượt 1)</p>
+                )}
+                {shipping.rental_months >= 6 && (
+                  <p className="text-xs text-green-600 font-medium mt-1">🎉 Ưu đãi: Miễn phí ship CẢ 2 CHIỀU!</p>
+                )}
+              </div>
             </div>
 
+            {/* === COST BREAKDOWN === */}
+            <div className="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-300 rounded-lg p-5 shadow-sm space-y-3">
+              <p className="text-sm font-semibold text-orange-900">💰 Chi tiết chi phí ({boxes.length} thùng):</p>
+              
+              {/* Storage cost */}
+              <div className="bg-white/70 rounded-md p-3 space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">📦 Phí lưu kho:</span>
+                  <span className="font-medium">{storageCost.totalDay.toLocaleString()} VND/ngày</span>
+                </div>
+                <div className="flex justify-between text-gray-500 text-xs">
+                  <span></span>
+                  <span>(~{storageCost.totalMonth.toLocaleString()} VND/tháng)</span>
+                </div>
+              </div>
+
+              {/* Shipping cost */}
+              <div className="bg-white/70 rounded-md p-3 space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">🚚 Ship lượt GỬI (thùng rỗng → nhận hàng → về kho):</span>
+                  <span className={`font-medium ${shippingCost.outboundFee === 0 && shipping.delivery_method === 'standard' && shipping.rental_months >= 3 ? 'text-green-600' : ''}`}>
+                    {shippingCost.outboundFee === 0 && shipping.delivery_method === 'standard' && shipping.rental_months >= 3
+                      ? 'Miễn phí ✓'
+                      : `${shippingCost.outboundFee.toLocaleString()} VND`
+                    }
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">🚚 Ship lượt TRẢ (kho → giao tận cửa):</span>
+                  <span className={`font-medium ${shippingCost.returnFee === 0 && shipping.delivery_method === 'standard' && shipping.rental_months >= 6 ? 'text-green-600' : ''}`}>
+                    {shippingCost.returnFee === 0 && shipping.delivery_method === 'standard' && shipping.rental_months >= 6
+                      ? 'Miễn phí ✓'
+                      : `${shippingCost.returnFee.toLocaleString()} VND`
+                    }
+                  </span>
+                </div>
+                {shippingCost.distanceSurcharge > 0 && (
+                  <div className="flex justify-between text-xs text-orange-600">
+                    <span>↳ Phí vượt khoảng cách:</span>
+                    <span>+{shippingCost.distanceSurcharge.toLocaleString()} VND</span>
+                  </div>
+                )}
+                {shippingCost.stairFee > 0 && (
+                  <div className="flex justify-between text-xs text-orange-600">
+                    <span>↳ Phí bê vác cầu thang:</span>
+                    <span>+{shippingCost.stairFee.toLocaleString()} VND</span>
+                  </div>
+                )}
+                {shippingCost.bulkDiscount > 0 && (
+                  <div className="flex justify-between text-xs text-green-600">
+                    <span>↳ Giảm giá gom thùng:</span>
+                    <span>-{shippingCost.bulkDiscount.toLocaleString()} VND/lượt</span>
+                  </div>
+                )}
+                {(shippingCost.outboundDiscount > 0 || shippingCost.returnDiscount > 0) && (
+                  <div className="flex justify-between text-xs text-green-600">
+                    <span>↳ Ưu đãi thuê dài hạn:</span>
+                    <span>-{(shippingCost.outboundDiscount + shippingCost.returnDiscount).toLocaleString()} VND</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Notes */}
+              {shippingCost.notes.length > 0 && (
+                <div className="text-xs text-indigo-700 space-y-0.5 px-1">
+                  {shippingCost.notes.map((note, i) => (
+                    <p key={i}>💡 {note}</p>
+                  ))}
+                </div>
+              )}
+
+              {/* Grand total */}
+              <div className="border-t-2 border-orange-300 pt-3 space-y-1">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-semibold text-orange-900">Tổng phí ship (2 lượt):</span>
+                  <span className="text-xl font-bold text-orange-600">
+                    {shippingCost.totalShippingFee.toLocaleString()} VND
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-semibold text-orange-900">Tổng cộng (ship + lưu kho tháng đầu):</span>
+                  <span className="text-2xl font-bold text-orange-700">
+                    {(shippingCost.totalShippingFee + storageCost.totalMonth).toLocaleString()} VND
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Prohibited items checkbox */}
             <div className={`p-4 rounded-lg border-2 transition-colors ${acceptNoProhibited ? 'bg-green-50 border-green-400' : 'bg-gray-50 border-gray-300 hover:border-gray-400'}`}>
               <label className="flex items-start gap-3 cursor-pointer">
                 <input
