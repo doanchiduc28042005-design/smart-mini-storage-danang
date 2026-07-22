@@ -114,7 +114,7 @@ const CustomerDashboard = () => {
           <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-4">
             <div>
               <h2 className="text-xl font-bold">📦 Cần gửi đồ vào kho?</h2>
-              <p className="text-white/90 text-sm mt-1">Đặt lịch shipper đến lấy hàng chỉ trong 30 giây</p>
+              <p className="text-white/90 text-sm mt-1">Đặt lịch shipper đến lấy hàng chỉ trong vài phút</p>
             </div>
             <Button
               onClick={() => setShowCreateOrder(true)}
