@@ -1,13 +1,13 @@
 {
   "files": {
     "main.css": "/smart-mini-storage-danang/static/css/main.fb2d31f4.css",
-    "main.js": "/smart-mini-storage-danang/static/js/main.3f5f439d.js",
+    "main.js": "/smart-mini-storage-danang/static/js/main.7ce823e4.js",
     "static/css/533.e0788051.chunk.css": "/smart-mini-storage-danang/static/css/533.e0788051.chunk.css",
     "static/js/533.1bd0c1e2.chunk.js": "/smart-mini-storage-danang/static/js/533.1bd0c1e2.chunk.js",
     "static/css/119.e0788051.chunk.css": "/smart-mini-storage-danang/static/css/119.e0788051.chunk.css",
     "static/js/119.2bd4aa14.chunk.js": "/smart-mini-storage-danang/static/js/119.2bd4aa14.chunk.js",
     "static/js/65.808eee9d.chunk.js": "/smart-mini-storage-danang/static/js/65.808eee9d.chunk.js",
-    "static/js/690.9c65ddb6.chunk.js": "/smart-mini-storage-danang/static/js/690.9c65ddb6.chunk.js",
+    "static/js/690.d95dc938.chunk.js": "/smart-mini-storage-danang/static/js/690.d95dc938.chunk.js",
     "static/js/66.282ff1bd.chunk.js": "/smart-mini-storage-danang/static/js/66.282ff1bd.chunk.js",
     "static/js/639.8ed83cb9.chunk.js": "/smart-mini-storage-danang/static/js/639.8ed83cb9.chunk.js",
     "static/js/503.6b0eb22b.chunk.js": "/smart-mini-storage-danang/static/js/503.6b0eb22b.chunk.js",
@@ -29,13 +29,13 @@
     "static/js/355.b7d57227.chunk.js": "/smart-mini-storage-danang/static/js/355.b7d57227.chunk.js",
     "index.html": "/smart-mini-storage-danang/index.html",
     "main.fb2d31f4.css.map": "/smart-mini-storage-danang/static/css/main.fb2d31f4.css.map",
-    "main.3f5f439d.js.map": "/smart-mini-storage-danang/static/js/main.3f5f439d.js.map",
+    "main.7ce823e4.js.map": "/smart-mini-storage-danang/static/js/main.7ce823e4.js.map",
     "533.e0788051.chunk.css.map": "/smart-mini-storage-danang/static/css/533.e0788051.chunk.css.map",
     "533.1bd0c1e2.chunk.js.map": "/smart-mini-storage-danang/static/js/533.1bd0c1e2.chunk.js.map",
     "119.e0788051.chunk.css.map": "/smart-mini-storage-danang/static/css/119.e0788051.chunk.css.map",
     "119.2bd4aa14.chunk.js.map": "/smart-mini-storage-danang/static/js/119.2bd4aa14.chunk.js.map",
     "65.808eee9d.chunk.js.map": "/smart-mini-storage-danang/static/js/65.808eee9d.chunk.js.map",
-    "690.9c65ddb6.chunk.js.map": "/smart-mini-storage-danang/static/js/690.9c65ddb6.chunk.js.map",
+    "690.d95dc938.chunk.js.map": "/smart-mini-storage-danang/static/js/690.d95dc938.chunk.js.map",
     "66.282ff1bd.chunk.js.map": "/smart-mini-storage-danang/static/js/66.282ff1bd.chunk.js.map",
     "639.8ed83cb9.chunk.js.map": "/smart-mini-storage-danang/static/js/639.8ed83cb9.chunk.js.map",
     "503.6b0eb22b.chunk.js.map": "/smart-mini-storage-danang/static/js/503.6b0eb22b.chunk.js.map",
@@ -58,6 +58,6 @@
   },
   "entrypoints": [
     "static/css/main.fb2d31f4.css",
-    "static/js/main.3f5f439d.js"
+    "static/js/main.7ce823e4.js"
   ]
 }
