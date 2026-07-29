@@ -80,4 +80,11 @@ export const generateQR = (orderId) => apiClient.post('/qr/generate', null, { pa
 // Dashboard
 export const getDashboardStats = () => apiClient.get('/dashboard/stats');
 
+// Inventory
+export const getInventory = () => apiClient.get('/inventory');
+export const updateInventory = (size, data) => apiClient.put(`/inventory/${size}`, data);
+
+// Order Renewal
+export const renewOrder = (orderId, months) => apiClient.post(`/orders/${orderId}/renew`, { months });
+
 export default apiClient;

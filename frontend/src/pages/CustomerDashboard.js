@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getMyOrders, setAuthToken, getNotifications, markNotificationRead } from '@/services/api';
+import { getMyOrders, setAuthToken, getNotifications, markNotificationRead, renewOrder } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,6 +24,10 @@ const CustomerDashboard = () => {
   const [showCreateOrder, setShowCreateOrder] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [showNotifDialog, setShowNotifDialog] = useState(false);
+  const [showRenewDialog, setShowRenewDialog] = useState(false);
+  const [renewingOrder, setRenewingOrder] = useState(null);
+  const [renewMonths, setRenewMonths] = useState(1);
+  const [renewLoading, setRenewLoading] = useState(false);
 
   useEffect(() => {
     loadOrders();
@@ -67,6 +71,40 @@ const CustomerDashboard = () => {
   };
 
   if (!user) return null;
+
+  const getDaysRemaining = (order) => {
+    if (!order.storage_expiry_date) return null;
+    const expiry = new Date(order.storage_expiry_date);
+    const now = new Date();
+    return Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
+  };
+
+  const getExpiryBadge = (order) => {
+    const days = getDaysRemaining(order);
+    if (days === null) return null;
+    if (days <= 0) return { text: '❌ Đã hết hạn', color: 'bg-red-100 text-red-800 border-red-300' };
+    if (days <= 3) return { text: `🔴 Còn ${days} ngày`, color: 'bg-red-100 text-red-700 border-red-300' };
+    if (days <= 7) return { text: `🟡 Còn ${days} ngày`, color: 'bg-yellow-100 text-yellow-800 border-yellow-300' };
+    if (days <= 10) return { text: `🟡 Còn ${days} ngày`, color: 'bg-yellow-50 text-yellow-700 border-yellow-200' };
+    return { text: `📅 Còn ${days} ngày`, color: 'bg-gray-100 text-gray-600 border-gray-200' };
+  };
+
+  const handleRenew = async () => {
+    if (!renewingOrder) return;
+    setRenewLoading(true);
+    try {
+      await renewOrder(renewingOrder.order_id, renewMonths);
+      alert(`Đã gia hạn thêm ${renewMonths} tháng cho đơn ${renewingOrder.order_id}!`);
+      setShowRenewDialog(false);
+      setRenewingOrder(null);
+      setRenewMonths(1);
+      loadOrders();
+    } catch (e) {
+      alert(e.response?.data?.detail || 'Lỗi khi gia hạn');
+    } finally {
+      setRenewLoading(false);
+    }
+  };
 
   const filteredOrders = orders.filter(o => {
     const query = searchQuery.toLowerCase();
@@ -211,6 +249,26 @@ const CustomerDashboard = () => {
                     )}
                   </CardHeader>
                   <CardContent className="space-y-2 text-xs">
+                    {/* Expiry Badge */}
+                    {getExpiryBadge(order) && (
+                      <div className="flex items-center justify-between">
+                        <Badge className={getExpiryBadge(order).color}>
+                          {getExpiryBadge(order).text}
+                        </Badge>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="h-7 text-xs border-indigo-300 text-indigo-600 hover:bg-indigo-50"
+                          onClick={() => {
+                            setRenewingOrder(order);
+                            setRenewMonths(1);
+                            setShowRenewDialog(true);
+                          }}
+                        >
+                          🔄 Gia hạn
+                        </Button>
+                      </div>
+                    )}
                     {order.pickup_time && (
                       <p className="text-gray-600">
                         🕐 Hẹn: <strong>{new Date(order.pickup_time).toLocaleString('vi-VN')}</strong>
@@ -328,6 +386,51 @@ const CustomerDashboard = () => {
               ))
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+      {/* Renewal Dialog */}
+      <Dialog open={showRenewDialog} onOpenChange={setShowRenewDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>🔄 Gia hạn đơn hàng</DialogTitle>
+          </DialogHeader>
+          {renewingOrder && (
+            <div className="space-y-4 mt-3">
+              <div className="bg-indigo-50 p-3 rounded-lg">
+                <p className="font-mono font-bold">{renewingOrder.order_id}</p>
+                {renewingOrder.storage_expiry_date && (
+                  <p className="text-sm text-gray-600 mt-1">
+                    Hạn hiện tại: {new Date(renewingOrder.storage_expiry_date).toLocaleDateString('vi-VN')}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Gia hạn thêm (tháng)</label>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 6, 12].map(m => (
+                    <button
+                      key={m}
+                      className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                        renewMonths === m 
+                          ? 'bg-indigo-600 text-white border-indigo-600' 
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                      }`}
+                      onClick={() => setRenewMonths(m)}
+                    >
+                      {m} th
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <Button 
+                className="w-full" 
+                onClick={handleRenew} 
+                disabled={renewLoading}
+              >
+                {renewLoading ? 'Đang xử lý...' : `✅ Xác nhận gia hạn ${renewMonths} tháng`}
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

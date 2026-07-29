@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getShippers, approveShipper, rejectShipper } from '@/services/api';
+import { sendShipperApprovalEmail, sendShipperRejectionEmail } from '@/services/emailService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -34,8 +35,23 @@ const ShippersManagement = () => {
     if (!selectedShipper) return;
     setIsApproving(true);
     try {
-      await approveShipper(selectedShipper.id);
-      alert('Đã duyệt thành công! Email đã được gửi cho Shipper.');
+      const res = await approveShipper(selectedShipper.id);
+      const shipperCode = res.data?.shipper_code || '';
+      
+      // Send email via EmailJS
+      const setupLink = `${window.location.origin}/shipper/setup-password`;
+      const emailResult = await sendShipperApprovalEmail(
+        selectedShipper.email,
+        shipperCode,
+        setupLink
+      );
+      
+      if (emailResult.success) {
+        alert(`Đã duyệt thành công! Email đã được gửi cho ${selectedShipper.email}.\nMã Shipper: ${shipperCode}`);
+      } else {
+        alert(`Đã duyệt thành công! Mã Shipper: ${shipperCode}\n⚠️ Không gửi được email (kiểm tra cấu hình EmailJS).`);
+      }
+      
       setShowReview(false);
       loadShippers();
     } catch (error) {
@@ -53,6 +69,10 @@ const ShippersManagement = () => {
     setIsRejecting(true);
     try {
       await rejectShipper(selectedShipper.id, { reason: rejectReason });
+      
+      // Send rejection email via EmailJS
+      await sendShipperRejectionEmail(selectedShipper.email, rejectReason);
+      
       alert('Đã từ chối hồ sơ và gửi email thông báo.');
       setShowRejectDialog(false);
       setShowReview(false);

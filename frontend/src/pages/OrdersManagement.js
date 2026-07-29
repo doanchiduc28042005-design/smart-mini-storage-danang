@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getOrders, createOrder, deleteOrder, getCustomers, getOrderHistory, updateOrderLocation } from '@/services/api';
+import { getOrders, createOrder, deleteOrder, getCustomers, getOrderHistory, updateOrderLocation, renewOrder } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -40,6 +40,10 @@ const OrdersManagement = () => {
   const [selectedCustomer, setSelectedCustomer] = useState('');
   const [customorderId, setCustomorderId] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [showRenewDialog, setShowRenewDialog] = useState(false);
+  const [renewingOrder, setRenewingOrder] = useState(null);
+  const [renewMonths, setRenewMonths] = useState(1);
+  const [renewLoading, setRenewLoading] = useState(false);
 
   useEffect(() => {
     loadorders();
@@ -103,6 +107,23 @@ const OrdersManagement = () => {
       alert(`✓ Đã xóa thùng hàng ${orderId} thành công.`);
     } catch (error) {
       alert('Lỗi khi xóa thùng hàng: ' + (error.response?.data?.detail || error.message));
+    }
+  };
+
+  const handleRenew = async () => {
+    if (!renewingOrder) return;
+    setRenewLoading(true);
+    try {
+      await renewOrder(renewingOrder.order_id, renewMonths);
+      alert(`Đã gia hạn thêm ${renewMonths} tháng cho đơn ${renewingOrder.order_id}!`);
+      setShowRenewDialog(false);
+      setRenewingOrder(null);
+      setRenewMonths(1);
+      loadorders();
+    } catch (e) {
+      alert(e.response?.data?.detail || 'Lỗi khi gia hạn');
+    } finally {
+      setRenewLoading(false);
     }
   };
 
@@ -229,6 +250,29 @@ const OrdersManagement = () => {
         <p className="text-xs text-gray-500">
           Cập nhật: {new Date(order.last_updated).toLocaleString('vi-VN')}
         </p>
+        {/* Expiry info */}
+        {order.storage_expiry_date && (() => {
+          const days = Math.ceil((new Date(order.storage_expiry_date) - new Date()) / (1000 * 60 * 60 * 24));
+          const color = days <= 0 ? 'text-red-700 bg-red-50' : days <= 3 ? 'text-red-600 bg-red-50' : days <= 7 ? 'text-yellow-700 bg-yellow-50' : 'text-gray-600 bg-gray-50';
+          return (
+            <div className={`flex items-center justify-between text-xs p-1.5 rounded ${color}`}>
+              <span>
+                {days <= 0 ? '❌ Hết hạn' : `📅 Còn ${days} ngày (${new Date(order.storage_expiry_date).toLocaleDateString('vi-VN')})`}
+              </span>
+              <button
+                className="text-indigo-600 font-medium hover:underline"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setRenewingOrder(order);
+                  setRenewMonths(1);
+                  setShowRenewDialog(true);
+                }}
+              >
+                🔄 Gia hạn
+              </button>
+            </div>
+          );
+        })()}
         {order.last_latitude && (
           <p className="text-xs text-blue-600">
             📍 {order.last_latitude.toFixed(4)}, {order.last_longitude.toFixed(4)}
@@ -709,6 +753,51 @@ const OrdersManagement = () => {
               ))
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+      {/* Renewal Dialog */}
+      <Dialog open={showRenewDialog} onOpenChange={setShowRenewDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>🔄 Gia hạn đơn hàng</DialogTitle>
+          </DialogHeader>
+          {renewingOrder && (
+            <div className="space-y-4 mt-3">
+              <div className="bg-indigo-50 p-3 rounded-lg">
+                <p className="font-mono font-bold">{renewingOrder.order_id}</p>
+                {renewingOrder.storage_expiry_date && (
+                  <p className="text-sm text-gray-600 mt-1">
+                    Hạn hiện tại: {new Date(renewingOrder.storage_expiry_date).toLocaleDateString('vi-VN')}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Gia hạn thêm (tháng)</label>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 6, 12].map(m => (
+                    <button
+                      key={m}
+                      className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                        renewMonths === m 
+                          ? 'bg-indigo-600 text-white border-indigo-600' 
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                      }`}
+                      onClick={() => setRenewMonths(m)}
+                    >
+                      {m} th
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <Button 
+                className="w-full" 
+                onClick={handleRenew} 
+                disabled={renewLoading}
+              >
+                {renewLoading ? 'Đang xử lý...' : `✅ Xác nhận gia hạn ${renewMonths} tháng`}
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

@@ -105,6 +105,14 @@ JWT_ALGORITHM = "HS256"
 # Create the main app without a prefix
 app = FastAPI()
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 @app.on_event("startup")
 async def startup_db_client():
     # Indexes for faster query resolution
@@ -127,6 +135,18 @@ async def startup_db_client():
             await collection.create_index(keys)
         except Exception as e:
             logging.warning(f"Failed to create index {keys} on {collection.name}: {e}")
+    
+    # Initialize box inventory (S, M, L) with default 1000 each
+    for size in ["S", "M", "L"]:
+        existing = await db.box_inventory.find_one({"size": size})
+        if not existing:
+            await db.box_inventory.insert_one({
+                "size": size,
+                "total": 1000,
+                "available": 1000,
+                "in_use": 0
+            })
+            logging.info(f"Initialized inventory for size {size}: 1000 boxes")
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
@@ -155,9 +175,75 @@ async def cleanup_inactive_shippers_task():
         # Wait 24 hours
         await asyncio.sleep(86400)
 
+async def check_order_expiry_task():
+    """Background task: check orders nearing expiry and send notifications at 10/7/3/1 days."""
+    while True:
+        try:
+            now = datetime.now(timezone.utc)
+            # Find all non-delivered orders with storage_expiry_date
+            orders = await db.orders.find(
+                {"status": {"$ne": "DELIVERED"}, "storage_expiry_date": {"$exists": True}},
+                {"_id": 0}
+            ).to_list(10000)
+            
+            for order in orders:
+                expiry_str = order.get("storage_expiry_date")
+                if not expiry_str:
+                    continue
+                expiry_date = datetime.fromisoformat(expiry_str) if isinstance(expiry_str, str) else expiry_str
+                if expiry_date.tzinfo is None:
+                    expiry_date = expiry_date.replace(tzinfo=timezone.utc)
+                
+                days_remaining = (expiry_date - now).days
+                
+                # Only notify at specific milestones: 10, 7, 3, 1
+                if days_remaining in [10, 7, 3, 1]:
+                    # Check if we already sent this exact notification today
+                    notif_key = f"expiry_{order['order_id']}_{days_remaining}d"
+                    existing_notif = await db.notifications.find_one({"notif_key": notif_key})
+                    if existing_notif:
+                        continue
+                    
+                    # Create notification
+                    urgency = "🔴" if days_remaining <= 3 else "🟡"
+                    notif = {
+                        "id": str(uuid.uuid4()),
+                        "customer_id": order["customer_id"],
+                        "title": f"{urgency} Đơn hàng {order['order_id']} sắp hết hạn!",
+                        "message": f"Đơn hàng {order['order_id']} còn {days_remaining} ngày lưu trữ (hết hạn {expiry_date.strftime('%d/%m/%Y')}). Vui lòng gia hạn hoặc nhận lại hàng.",
+                        "is_read": False,
+                        "notif_key": notif_key,
+                        "created_at": now.isoformat()
+                    }
+                    await db.notifications.insert_one(notif)
+                    logging.info(f"Sent expiry notification for {order['order_id']}: {days_remaining} days remaining")
+                
+                # Mark as expired
+                elif days_remaining <= 0:
+                    notif_key = f"expired_{order['order_id']}"
+                    existing_notif = await db.notifications.find_one({"notif_key": notif_key})
+                    if not existing_notif:
+                        notif = {
+                            "id": str(uuid.uuid4()),
+                            "customer_id": order["customer_id"],
+                            "title": f"🔴 Đơn hàng {order['order_id']} ĐÃ HẾT HẠN!",
+                            "message": f"Đơn hàng {order['order_id']} đã hết thời hạn lưu trữ. Vui lòng liên hệ để gia hạn hoặc nhận lại hàng ngay.",
+                            "is_read": False,
+                            "notif_key": notif_key,
+                            "created_at": now.isoformat()
+                        }
+                        await db.notifications.insert_one(notif)
+                    
+        except Exception as e:
+            logging.error(f"Error in expiry check task: {e}")
+        
+        # Run every 6 hours
+        await asyncio.sleep(21600)
+
 @app.on_event("startup")
 async def start_background_tasks():
     asyncio.create_task(cleanup_inactive_shippers_task())
+    asyncio.create_task(check_order_expiry_task())
 
 # ============== AUTH HELPERS ==============
 import asyncio
@@ -349,6 +435,7 @@ class Order(BaseModel):
     pickup_time: Optional[str] = None  # ISO datetime string
     items: List[BoxOrderItem] = Field(default_factory=list)
     created_by: str = "admin"  # 'admin' or 'customer'
+    storage_expiry_date: Optional[str] = None  # ISO datetime string
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     last_updated: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -356,6 +443,9 @@ class OrderCreate(BaseModel):
     customer_id: str
     customer_name: str
     order_id: Optional[str] = None  # If not provided, will auto-generate
+
+class OrderRenewRequest(BaseModel):
+    months: int = 1  # Number of months to extend
 
 class CustomerOrderCreate(BaseModel):
     boxes: List[BoxOrderItem]
@@ -693,6 +783,15 @@ async def customer_create_order(data: CustomerOrderCreate, current_user: dict = 
         if not box_item.item_description.strip():
             raise HTTPException(status_code=400, detail="Vui lòng mô tả hàng hóa cho tất cả các thùng")
     
+    # Check inventory availability
+    from collections import Counter
+    size_counts = Counter(box.size for box in data.boxes)
+    for size, count in size_counts.items():
+        inv = await db.box_inventory.find_one({"size": size})
+        if not inv or inv.get("available", 0) < count:
+            available = inv.get("available", 0) if inv else 0
+            raise HTTPException(status_code=400, detail=f"Thùng size {size} không đủ! Còn lại: {available}")
+    
     pickup_address = (data.pickup_address or current_user.get("default_pickup_address") or current_user.get("address") or "").strip()
     if not pickup_address:
         raise HTTPException(status_code=400, detail="Vui lòng nhập địa chỉ lấy hàng")
@@ -719,6 +818,9 @@ async def customer_create_order(data: CustomerOrderCreate, current_user: dict = 
     )
     
     now = datetime.now(timezone.utc)
+    # Calculate storage expiry date based on rental_months
+    storage_expiry = now + timedelta(days=data.rental_months * 30)
+    
     order_doc = {
         "id": str(uuid.uuid4()),
         "order_id": order_id,
@@ -734,6 +836,7 @@ async def customer_create_order(data: CustomerOrderCreate, current_user: dict = 
         "last_updated": now.isoformat(),
         "last_latitude": None,
         "last_longitude": None,
+        "storage_expiry_date": storage_expiry.isoformat(),
         # Shipping fee data
         "delivery_method": data.delivery_method,
         "rental_months": data.rental_months,
@@ -742,6 +845,13 @@ async def customer_create_order(data: CustomerOrderCreate, current_user: dict = 
     }
     
     await db.orders.insert_one(order_doc)
+    
+    # Deduct inventory for each box
+    for size, count in size_counts.items():
+        await db.box_inventory.update_one(
+            {"size": size},
+            {"$inc": {"available": -count, "in_use": count}}
+        )
     
     return {
         "success": True,
@@ -1157,6 +1267,8 @@ async def process_qr_scan(data: QRScanRequest):
     if not shipper:
         raise HTTPException(status_code=404, detail="Shipper không tồn tại")
     
+    previous_status = order.get("status")
+    
     # Update order status
     now = datetime.now(timezone.utc)
     update_fields = {
@@ -1171,6 +1283,17 @@ async def process_qr_scan(data: QRScanRequest):
         {"order_id": data.order_id},
         {"$set": update_fields}
     )
+    
+    # If status changed to DELIVERED, return boxes to inventory
+    if data.status == "DELIVERED" and previous_status != "DELIVERED":
+        from collections import Counter
+        items = order.get("items", [])
+        size_counts = Counter(item.get("size", "M") for item in items)
+        for size, count in size_counts.items():
+            await db.box_inventory.update_one(
+                {"size": size},
+                {"$inc": {"available": count, "in_use": -count}}
+            )
     
     # Update shipper last active date
     await db.shippers.update_one(
@@ -1256,6 +1379,99 @@ async def get_dashboard_stats():
         "tracking_events": total_tracking_events
     }
 
+
+# ============== INVENTORY ENDPOINTS ==============
+
+@api_router.get("/inventory")
+async def get_inventory():
+    """Get current box inventory for all sizes"""
+    inventory = await db.box_inventory.find({}, {"_id": 0}).to_list(10)
+    return inventory
+
+class InventoryUpdate(BaseModel):
+    total: Optional[int] = None
+    available: Optional[int] = None
+
+@api_router.put("/inventory/{size}")
+async def update_inventory(size: str, data: InventoryUpdate):
+    """Admin updates inventory for a specific size"""
+    size = size.upper()
+    if size not in ["S", "M", "L"]:
+        raise HTTPException(status_code=400, detail="Size phải là S, M hoặc L")
+    
+    update_fields = {}
+    if data.total is not None:
+        update_fields["total"] = data.total
+        # Recalculate available = total - in_use
+        inv = await db.box_inventory.find_one({"size": size})
+        in_use = inv.get("in_use", 0) if inv else 0
+        update_fields["available"] = data.total - in_use
+    if data.available is not None:
+        update_fields["available"] = data.available
+    
+    if update_fields:
+        await db.box_inventory.update_one({"size": size}, {"$set": update_fields}, upsert=True)
+    
+    updated = await db.box_inventory.find_one({"size": size}, {"_id": 0})
+    return updated
+
+# ============== ORDER RENEWAL ENDPOINT ==============
+
+@api_router.post("/orders/{order_id}/renew")
+async def renew_order(order_id: str, data: OrderRenewRequest):
+    """Extend storage duration for an order"""
+    order = await db.orders.find_one({"order_id": order_id})
+    if not order:
+        raise HTTPException(status_code=404, detail="Đơn hàng không tồn tại")
+    
+    if data.months < 1 or data.months > 12:
+        raise HTTPException(status_code=400, detail="Số tháng gia hạn phải từ 1 đến 12")
+    
+    now = datetime.now(timezone.utc)
+    
+    # Get current expiry or default to now
+    current_expiry_str = order.get("storage_expiry_date")
+    if current_expiry_str:
+        current_expiry = datetime.fromisoformat(current_expiry_str)
+        if current_expiry.tzinfo is None:
+            current_expiry = current_expiry.replace(tzinfo=timezone.utc)
+    else:
+        current_expiry = now
+    
+    # Extend from the later of current_expiry or now
+    extend_from = max(current_expiry, now)
+    new_expiry = extend_from + timedelta(days=data.months * 30)
+    
+    # Update rental_months
+    old_months = order.get("rental_months", 1)
+    new_total_months = old_months + data.months
+    
+    await db.orders.update_one(
+        {"order_id": order_id},
+        {"$set": {
+            "storage_expiry_date": new_expiry.isoformat(),
+            "rental_months": new_total_months,
+            "last_updated": now.isoformat()
+        }}
+    )
+    
+    # Send notification to customer
+    notif = {
+        "id": str(uuid.uuid4()),
+        "customer_id": order["customer_id"],
+        "title": "✅ Gia hạn thành công!",
+        "message": f"Đơn hàng {order_id} đã được gia hạn thêm {data.months} tháng. Thời hạn mới: {new_expiry.strftime('%d/%m/%Y')}.",
+        "is_read": False,
+        "created_at": now.isoformat()
+    }
+    await db.notifications.insert_one(notif)
+    
+    return {
+        "success": True,
+        "message": f"Đã gia hạn thêm {data.months} tháng",
+        "new_expiry_date": new_expiry.isoformat(),
+        "total_months": new_total_months
+    }
 
 # ============== ROOT ENDPOINT ==============
 

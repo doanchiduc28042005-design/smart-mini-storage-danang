@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { getDashboardStats, getOrders } from '@/services/api';
+import { getDashboardStats, getOrders, getInventory } from '@/services/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import MapView from '@/components/MapView';
@@ -26,31 +26,88 @@ const StatCard = ({ title, value, description, color = 'blue', testId }) => {
   );
 };
 
+const InventoryCard = ({ size, total, available, inUse }) => {
+  const pct = total > 0 ? ((available / total) * 100).toFixed(0) : 0;
+  const barColor = pct > 50 ? 'bg-green-500' : pct > 20 ? 'bg-yellow-500' : 'bg-red-500';
+  const sizeLabels = { S: 'Nhỏ', M: 'Vừa', L: 'Lớn' };
+  
+  return (
+    <Card className="overflow-hidden">
+      <CardContent className="pt-6">
+        <div className="flex justify-between items-center mb-2">
+          <div>
+            <span className="text-2xl font-bold">📦 {size}</span>
+            <span className="text-sm text-gray-500 ml-2">({sizeLabels[size]})</span>
+          </div>
+          <span className="text-sm font-semibold text-gray-600">{pct}% trống</span>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-3 mb-3">
+          <div className={`${barColor} h-3 rounded-full transition-all duration-500`} style={{ width: `${pct}%` }}></div>
+        </div>
+        <div className="grid grid-cols-3 gap-2 text-center text-xs">
+          <div className="bg-blue-50 rounded-lg p-2">
+            <p className="text-gray-500">Tổng</p>
+            <p className="font-bold text-blue-700">{total}</p>
+          </div>
+          <div className="bg-green-50 rounded-lg p-2">
+            <p className="text-gray-500">Trống</p>
+            <p className="font-bold text-green-700">{available}</p>
+          </div>
+          <div className="bg-orange-50 rounded-lg p-2">
+            <p className="text-gray-500">Đang dùng</p>
+            <p className="font-bold text-orange-700">{inUse}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
 const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
   const [orders, setorders] = useState([]);
+  const [inventory, setInventory] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadAll();
-    const interval = setInterval(loadAll, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const loadAll = async () => {
+  const loadAll = useCallback(async () => {
     try {
-      const [statsRes, ordersRes] = await Promise.all([
+      const [statsRes, ordersRes, invRes] = await Promise.all([
         getDashboardStats(),
-        getOrders()
+        getOrders(),
+        getInventory()
       ]);
       setStats(statsRes.data);
       setorders(ordersRes.data);
+      setInventory(invRes.data || []);
       setLoading(false);
     } catch (error) {
       console.error('Error loading data:', error);
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadAll();
+    
+    // Poll every 30s instead of 5s, and only when tab is visible
+    let interval;
+    const startPolling = () => {
+      interval = setInterval(() => {
+        if (!document.hidden) loadAll();
+      }, 30000);
+    };
+    startPolling();
+    
+    const handleVisibility = () => {
+      if (!document.hidden) loadAll(); // Refresh immediately when coming back
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [loadAll]);
 
   if (loading) {
     return (
@@ -75,6 +132,17 @@ const AdminDashboard = () => {
         <Button onClick={loadAll} variant="outline" data-testid="refresh-stats">
           ↻ Làm Mới
         </Button>
+      </div>
+
+      {/* Inventory Section */}
+      <div>
+        <h2 className="text-xl font-semibold text-gray-800 mb-4">🏗️ Kiểm Soát Kho Thùng</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {['S', 'M', 'L'].map(size => {
+            const inv = inventory.find(i => i.size === size) || { total: 1000, available: 1000, in_use: 0 };
+            return <InventoryCard key={size} size={size} total={inv.total} available={inv.available} inUse={inv.in_use} />;
+          })}
+        </div>
       </div>
 
       <div>
@@ -129,7 +197,7 @@ const AdminDashboard = () => {
       <div>
         <h2 className="text-xl font-semibold text-gray-800 mb-4">⚡ Thao Tác Nhanh</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Link to="/admin/orders">
+          <Link to="/doanh_nghiep/boxes">
             <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full" data-testid="link-orders">
               <CardContent className="flex flex-col items-center justify-center p-6">
                 <div className="text-4xl mb-2">📦</div>
@@ -137,7 +205,7 @@ const AdminDashboard = () => {
               </CardContent>
             </Card>
           </Link>
-          <Link to="/admin/customers">
+          <Link to="/doanh_nghiep/customers">
             <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full" data-testid="link-customers">
               <CardContent className="flex flex-col items-center justify-center p-6">
                 <div className="text-4xl mb-2">👤</div>
@@ -145,7 +213,7 @@ const AdminDashboard = () => {
               </CardContent>
             </Card>
           </Link>
-          <Link to="/admin/shippers">
+          <Link to="/doanh_nghiep/shippers">
             <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full" data-testid="link-shippers">
               <CardContent className="flex flex-col items-center justify-center p-6">
                 <div className="text-4xl mb-2">🚚</div>
@@ -168,4 +236,3 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
-
