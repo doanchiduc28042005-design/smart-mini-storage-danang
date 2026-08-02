@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
-import { getShipperOrders } from '../../services/api';
+import { getShipperOrders, updateOrderLocation } from '../../services/api';
+import * as Location from 'expo-location';
 
 const statusLabels = {
   'WAITING_FOR_PICKUP': { label: '⏳ Chờ Lấy', color: '#f59e0b', bg: '#fef3c7' },
@@ -16,6 +17,7 @@ export default function ShipperHomeScreen({ navigation }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [updatingLocation, setUpdatingLocation] = useState(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -34,6 +36,29 @@ export default function ShipperHomeScreen({ navigation }) {
   useEffect(() => { loadData(); }, [loadData]);
 
   const onRefresh = () => { setRefreshing(true); loadData(); };
+
+  const handleUpdateLocation = async (orderId) => {
+    setUpdatingLocation(orderId);
+    try {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Lỗi', 'Cần cấp quyền truy cập vị trí để cập nhật tọa độ!');
+        return;
+      }
+
+      let location = await Location.getCurrentPositionAsync({});
+      await updateOrderLocation(orderId, {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude
+      });
+      
+      Alert.alert('Thành công', 'Đã cập nhật vị trí hiện tại của bạn cho đơn hàng này.');
+    } catch (e) {
+      Alert.alert('Lỗi', 'Không thể cập nhật vị trí: ' + (e.response?.data?.detail || e.message));
+    } finally {
+      setUpdatingLocation(null);
+    }
+  };
 
   const activeOrders = orders.filter(o => o.status !== 'DELIVERED');
   const completedOrders = orders.filter(o => o.status === 'DELIVERED');
@@ -110,6 +135,19 @@ export default function ShipperHomeScreen({ navigation }) {
                 {order.pickup_address && (
                   <Text style={styles.orderAddress}>📍 {order.pickup_address}</Text>
                 )}
+                
+                {/* Location Update Button */}
+                <TouchableOpacity 
+                  style={styles.locationBtn}
+                  onPress={() => handleUpdateLocation(order.order_id)}
+                  disabled={updatingLocation === order.order_id}
+                >
+                  {updatingLocation === order.order_id ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.locationBtnText}>📍 Cập nhật vị trí của tôi</Text>
+                  )}
+                </TouchableOpacity>
               </View>
             );
           })
@@ -155,4 +193,6 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 12, fontWeight: '600' },
   orderCustomer: { fontSize: 13, color: '#374151', marginTop: 8 },
   orderAddress: { fontSize: 12, color: '#6b7280', marginTop: 4 },
+  locationBtn: { backgroundColor: '#3b82f6', marginTop: 12, paddingVertical: 10, borderRadius: 8, alignItems: 'center' },
+  locationBtnText: { color: '#fff', fontSize: 13, fontWeight: 'bold' }
 });

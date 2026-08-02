@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, ActivityIndicator, Modal, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { getOrder, scanQR } from '../../services/api';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 
 const STATUS_OPTIONS = [
   { value: 'PICKED_UP', label: '🚚 Đã Lấy Hàng' },
@@ -18,22 +19,52 @@ export default function ShipperScanScreen() {
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  
+  // Camera states
+  const [permission, requestPermission] = useCameraPermissions();
+  const [showScanner, setShowScanner] = useState(false);
 
-  const handleLookup = async () => {
-    if (!orderId.trim()) {
+  const handleLookup = async (idToLookup) => {
+    const id = typeof idToLookup === 'string' ? idToLookup : orderId;
+    if (!id.trim()) {
       Alert.alert('Lỗi', 'Vui lòng nhập mã đơn hàng');
       return;
     }
     setLoading(true);
     try {
-      const res = await getOrder(orderId.trim());
+      const res = await getOrder(id.trim());
       setOrderInfo(res.data);
+      setOrderId(id.trim());
     } catch (e) {
       Alert.alert('Lỗi', 'Không tìm thấy đơn hàng với mã này');
       setOrderInfo(null);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleBarcodeScanned = ({ data }) => {
+    setShowScanner(false);
+    if (data) {
+      setOrderId(data);
+      handleLookup(data);
+    }
+  };
+
+  const openScanner = async () => {
+    if (Platform.OS === 'web') {
+      Alert.alert('Thông báo', 'Chức năng quét mã QR bằng Camera chỉ hoạt động trên ứng dụng di động thật (điện thoại). Trên máy tính, vui lòng nhập mã bằng tay nhé!');
+      return;
+    }
+
+    if (!permission?.granted) {
+      const res = await requestPermission();
+      if (!res.granted) {
+        Alert.alert('Lỗi', 'Bạn cần cấp quyền sử dụng camera để quét QR');
+        return;
+      }
+    }
+    setShowScanner(true);
   };
 
   const handleSubmit = async () => {
@@ -69,9 +100,9 @@ export default function ShipperScanScreen() {
           <Text style={styles.headerTitle}>📷 Quét / Nhập Mã Đơn</Text>
         </View>
 
-        {/* Manual Input */}
+        {/* Manual Input or QR Button */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Nhập mã đơn hàng</Text>
+          <Text style={styles.cardTitle}>Nhập mã hoặc quét QR</Text>
           <View style={styles.inputRow}>
             <TextInput
               style={[styles.input, { flex: 1 }]}
@@ -81,12 +112,16 @@ export default function ShipperScanScreen() {
               onChangeText={setOrderId}
               autoCapitalize="characters"
             />
-            <TouchableOpacity style={styles.lookupBtn} onPress={handleLookup} disabled={loading}>
+            <TouchableOpacity style={styles.lookupBtn} onPress={() => handleLookup()} disabled={loading}>
               {loading ? <ActivityIndicator color="#fff" size="small" /> : (
                 <Text style={styles.lookupBtnText}>Tìm</Text>
               )}
             </TouchableOpacity>
           </View>
+          
+          <TouchableOpacity style={styles.qrButton} onPress={openScanner}>
+            <Text style={styles.qrButtonText}>📸 Quét Mã QR</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Order Info */}
@@ -169,6 +204,32 @@ export default function ShipperScanScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* QR Scanner Modal */}
+      <Modal visible={showScanner} animationType="slide" transparent={false}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
+          <View style={styles.scannerHeader}>
+            <TouchableOpacity onPress={() => setShowScanner(false)}>
+              <Text style={styles.scannerCloseText}>Hủy</Text>
+            </TouchableOpacity>
+            <Text style={styles.scannerTitle}>Đưa mã QR vào khung hình</Text>
+            <View style={{ width: 40 }} />
+          </View>
+          
+          <View style={{ flex: 1 }}>
+            {showScanner && (
+              <CameraView
+                style={{ flex: 1 }}
+                facing="back"
+                onBarcodeScanned={handleBarcodeScanned}
+                barcodeScannerSettings={{
+                  barcodeTypes: ["qr"],
+                }}
+              />
+            )}
+          </View>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -182,7 +243,7 @@ const styles = StyleSheet.create({
     borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#f3f4f6',
   },
   cardTitle: { fontSize: 16, fontWeight: 'bold', color: '#111827', marginBottom: 12 },
-  inputRow: { flexDirection: 'row', gap: 10 },
+  inputRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
   input: {
     backgroundColor: '#f9fafb', borderWidth: 1, borderColor: '#e5e7eb',
     borderRadius: 8, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: '#111827',
@@ -192,6 +253,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
   lookupBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
+  qrButton: {
+    backgroundColor: '#3b82f6',
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  qrButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
   infoLabel: { fontSize: 13, color: '#6b7280' },
   infoValue: { fontSize: 13, fontWeight: '500', color: '#111827', flex: 1, textAlign: 'right' },
@@ -207,4 +279,20 @@ const styles = StyleSheet.create({
   submitBtn: { backgroundColor: '#10b981', paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 16 },
   submitBtnDisabled: { opacity: 0.5 },
   submitBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  scannerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#111827'
+  },
+  scannerCloseText: {
+    color: '#fff',
+    fontSize: 16,
+  },
+  scannerTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold'
+  }
 });

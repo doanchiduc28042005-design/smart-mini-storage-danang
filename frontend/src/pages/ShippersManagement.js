@@ -41,7 +41,7 @@ const ShippersManagement = () => {
       // Send email via EmailJS
       const isGithubPages = window.location.hostname.includes('github.io');
       const basePath = isGithubPages ? '/smart-mini-storage-danang' : '';
-      const setupLink = `${window.location.origin}${basePath}/shipper/setup-password`;
+      const setupLink = `${window.location.origin}${basePath}/?redirect=/shipper/setup-password`;
       const emailResult = await sendShipperApprovalEmail(
         selectedShipper.email,
         shipperCode,

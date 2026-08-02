@@ -137,6 +137,15 @@ export default function LoginScreen({ navigation }) {
             <Text style={styles.linkText}>Đăng ký ngay</Text>
           </TouchableOpacity>
         </View>
+
+        {roleTab === 'shipper' && (
+          <View style={[styles.footerRow, { marginTop: 8 }]}>
+            <Text style={styles.footerText}>Quên mật khẩu? </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('ShipperForgotPwd')}>
+              <Text style={styles.linkText}>Khôi phục ngay</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     </SafeAreaView>
   );

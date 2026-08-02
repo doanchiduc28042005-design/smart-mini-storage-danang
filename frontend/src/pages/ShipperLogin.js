@@ -89,7 +89,10 @@ const ShipperLogin = () => {
               Chưa có tài khoản? <Link to="/shipper/register" className="text-blue-600 font-medium hover:underline">Đăng ký đối tác</Link>
             </div>
             <div>
-              Quên mật khẩu / Lần đầu đăng nhập? <Link to="/shipper/setup-password" className="text-blue-600 font-medium hover:underline">Thiết lập ngay</Link>
+              Lần đầu đăng nhập? <Link to="/shipper/setup-password" className="text-blue-600 font-medium hover:underline">Thiết lập ngay</Link>
+            </div>
+            <div>
+              <Link to="/shipper/forgot-password" className="text-blue-600 font-medium hover:underline">Quên mật khẩu?</Link>
             </div>
           </div>
         </form>

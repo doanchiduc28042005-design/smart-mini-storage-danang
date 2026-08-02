@@ -372,6 +372,10 @@ class ShipperLogin(BaseModel):
 
 class ShipperReject(BaseModel):
     reason: str
+
+class ForgotPasswordInput(BaseModel):
+    email: str
+
 class Notification(BaseModel):
     model_config = ConfigDict(extra="ignore")
     
@@ -963,6 +967,25 @@ async def setup_shipper_password(input: ShipperSetupPassword):
         {"$set": {"password_hash": pwd_hash}}
     )
     return {"message": "Tạo mật khẩu thành công"}
+
+@api_router.post("/shippers/forgot-password")
+async def forgot_shipper_password(input: ForgotPasswordInput, background_tasks: BackgroundTasks):
+    shipper = await db.shippers.find_one({"email": input.email})
+    if not shipper:
+        raise HTTPException(status_code=404, detail="Email không tồn tại trong hệ thống Shipper")
+    
+    # We will simulate sending an email for now by just accepting it, and log it or use an email service
+    setup_link = f"https://doanchiduc28042005-design.github.io/smart-mini-storage-danang/?redirect=/shipper/setup-password"
+    
+    # In a real app we might reset the password hash here or generate a reset token.
+    # For now we'll allow them to use setup-password again by clearing the hash
+    await db.shippers.update_one(
+        {"email": input.email},
+        {"$set": {"password_hash": ""}}
+    )
+    
+    background_tasks.add_task(send_shipper_approval_email, shipper['email'], shipper['shipper_code'], setup_link)
+    return {"message": "Đã gửi email khôi phục mật khẩu"}
 
 @api_router.post("/shippers/login")
 async def login_shipper(input: ShipperLogin):

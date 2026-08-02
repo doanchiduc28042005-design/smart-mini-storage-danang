@@ -6,7 +6,7 @@ export const API_URL = 'https://smart-mini-storage-danang.onrender.com/api';
 
 const api = axios.create({
   baseURL: API_URL,
-  timeout: 15000, // 15 second timeout to prevent infinite loading
+  timeout: 60000, // 60s timeout for Render free tier cold start
 });
 
 api.interceptors.request.use(async (config) => {
@@ -33,6 +33,7 @@ api.interceptors.response.use(
 export const login = (data) => api.post('/auth/login', data);
 export const shipperLogin = (data) => api.post('/shippers/login', data);
 export const registerCustomer = (data) => api.post('/auth/register', data);
+export const registerShipper = (data) => api.post('/shippers/register', data);
 export const getMe = () => api.get('/auth/me');
 export const logoutApi = () => api.post('/auth/logout');
 
@@ -48,6 +49,7 @@ export const markNotificationRead = (notifId) => api.put(`/notifications/${notif
 export const getOrders = () => api.get('/orders');
 export const getOrder = (orderId) => api.get(`/orders/${orderId}`);
 export const createOrder = (data) => api.post('/orders', data);
+export const renewOrder = (orderId, data) => api.post(`/orders/${orderId}/renew`, data);
 export const updateOrderLocation = (orderId, data) => api.patch(`/orders/${orderId}/location`, data);
 export const getOrderTrackingHistory = (orderId) => api.get(`/orders/${orderId}/history`);
 export const getDashboardStats = () => api.get('/dashboard/stats');
@@ -62,6 +64,7 @@ export const shipperRegister = (data) => api.post('/shippers/register', data);
 export const approveShipper = (shipperId) => api.put(`/shippers/${shipperId}/approve`);
 export const rejectShipper = (shipperId, data) => api.put(`/shippers/${shipperId}/reject`, data);
 export const setupShipperPassword = (data) => api.post('/shippers/setup-password', data);
+export const forgotShipperPassword = (data) => api.post('/shippers/forgot-password', data);
 export const getShipperOrders = (shipperId) => api.get(`/shippers/${shipperId}/orders`);
 
 // ============== CUSTOMERS ==============

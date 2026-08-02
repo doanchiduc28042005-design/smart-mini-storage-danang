@@ -5,9 +5,9 @@ import { useAuth } from '../../context/AuthContext';
 import { createMyOrder } from '../../services/api';
 
 const BOX_SIZES = [
-  { value: 'S', label: 'S - Nhỏ', desc: '40x30x30cm', price: '99,000đ/tháng' },
-  { value: 'M', label: 'M - Vừa', desc: '60x40x40cm', price: '149,000đ/tháng' },
-  { value: 'L', label: 'L - Lớn', desc: '80x50x50cm', price: '199,000đ/tháng' },
+  { value: 'S', label: 'S - Nhỏ', desc: '52x36.5x27.5cm', price: '120,000đ/tháng' },
+  { value: 'M', label: 'M - Vừa', desc: '62x44.5x32cm', price: '180,000đ/tháng' },
+  { value: 'L', label: 'L - Lớn', desc: '69.5x50x36cm', price: '270,000đ/tháng' },
 ];
 
 export default function CreateOrderScreen({ navigation }) {

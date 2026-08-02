@@ -27,8 +27,9 @@ const StatCard = ({ title, value, description, color = 'blue', testId }) => {
 };
 
 const InventoryCard = ({ size, total, available, inUse }) => {
-  const pct = total > 0 ? ((available / total) * 100).toFixed(0) : 0;
-  const barColor = pct > 50 ? 'bg-green-500' : pct > 20 ? 'bg-yellow-500' : 'bg-red-500';
+  const pctRaw = total > 0 ? Math.floor((available / total) * 1000) / 10 : 0;
+  const pct = pctRaw % 1 === 0 ? pctRaw.toFixed(0) : pctRaw.toFixed(1);
+  const barColor = pctRaw > 50 ? 'bg-green-500' : pctRaw > 20 ? 'bg-yellow-500' : 'bg-red-500';
   const sizeLabels = { S: 'Nhỏ', M: 'Vừa', L: 'Lớn' };
   
   return (

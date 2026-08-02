@@ -54,6 +54,7 @@ export const registerShipper = (data) => apiClient.post('/shippers/register', da
 export const approveShipper = (id) => apiClient.put(`/shippers/${id}/approve`);
 export const rejectShipper = (id, data) => apiClient.put(`/shippers/${id}/reject`, data);
 export const setupShipperPassword = (data) => apiClient.post('/shippers/setup-password', data);
+export const forgotShipperPassword = (data) => apiClient.post('/shippers/forgot-password', data);
 export const loginShipper = (data) => apiClient.post('/shippers/login', data);
 export const getShipperOrders = (id) => apiClient.get(`/shippers/${id}/orders`);
 

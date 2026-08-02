@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { createMyOrder } from '@/services/api';
+import React, { useState, useMemo, useEffect } from 'react';
+import { createMyOrder, getInventory } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,24 +19,24 @@ const PROHIBITED_ITEMS = [
 const BOX_SIZES = {
   'S': {
     name: 'Size S (Thùng nhỏ)',
-    dimensions: '45 x 35 x 30 cm (~47 lít)',
+    dimensions: '52 x 36.5 x 27.5 cm (~52.2 lít)',
     price: 4000,
     priceMonth: 120000,
-    capacity: 'Khoảng 15 - 20 cuốn sách, tài liệu, 3 - 4 đôi giày dép, hoặc đồ trang điểm, phụ kiện cá nhân nhỏ.'
+    capacity: 'Đặc điểm: Gọn nhẹ, thích hợp đồ cá nhân. Sức chứa: 3-5 đôi giày, tài liệu, balo laptop / 25-30 áo hoặc 15-20 quần / 40-50 món đồ mỏng, chăn mỏng.'
   },
   'M': {
     name: 'Size M (Thùng tiêu chuẩn)',
-    dimensions: '60 x 40 x 35 cm (~84 lít)',
+    dimensions: '62 x 44.5 x 32 cm (~88.4 lít)',
     price: 6000,
     priceMonth: 180000,
-    capacity: 'Khoảng 25 - 30 bộ quần áo mùa hè, hoặc 2 chiếc chăn mền bông dày, đồ gia dụng nhà bếp quy mô nhỏ.'
+    capacity: 'Dung tích trung bình: Rất linh hoạt. Sức chứa: Quần áo theo mùa, chăn ga cá nhân, đồ chơi / 50-60 áo hoặc 30-35 quần / 80-100 món đồ, thêm 1 chăn bông nhỏ sau khi hút chân không.'
   },
   'L': {
     name: 'Size L (Thùng lớn)',
-    dimensions: '70 x 50 x 45 cm (~157 lít)',
+    dimensions: '69.5 x 50 x 36 cm (~125.1 lít)',
     price: 9000,
     priceMonth: 270000,
-    capacity: 'Đóng vừa 1 vali du lịch cỡ lớn (size 28), hoặc các thiết bị điện tử như màn hình máy tính, loa gia đình, hàng hóa cồng kềnh.'
+    capacity: 'Dung tích lớn nhất: Cho đồ cồng kềnh. Sức chứa: Vali 24-28 inch, nệm gấp, áo phao / 80-100 áo hoặc 45-55 quần / 130-160 món đồ, chăn mền dày, đồ chuyển trọ.'
   }
 };
 
@@ -127,6 +127,19 @@ const CreateOrderDialog = ({ open, onOpenChange, defaultAddress, onCreated }) =>
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [successData, setSuccessData] = useState(null);
+  const [inventoryMap, setInventoryMap] = useState({});
+
+  useEffect(() => {
+    if (open) {
+      getInventory().then(res => {
+        const map = {};
+        res.data.forEach(item => {
+          map[item.size] = item.available;
+        });
+        setInventoryMap(map);
+      }).catch(err => console.error("Failed to load inventory", err));
+    }
+  }, [open]);
 
   const resetForm = () => {
     setBoxes([{ id: Date.now(), size: 'M', item_description: '', notes: '' }]);
@@ -300,9 +313,9 @@ const CreateOrderDialog = ({ open, onOpenChange, defaultAddress, onCreated }) =>
                           <SelectValue placeholder="Chọn kích thước" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="S">Size S (Thùng nhỏ)</SelectItem>
-                          <SelectItem value="M">Size M (Thùng tiêu chuẩn)</SelectItem>
-                          <SelectItem value="L">Size L (Thùng lớn)</SelectItem>
+                          <SelectItem value="S">Size S (Thùng nhỏ) {inventoryMap['S'] !== undefined ? `- Còn: ${inventoryMap['S']} thùng` : ''}</SelectItem>
+                          <SelectItem value="M">Size M (Thùng tiêu chuẩn) {inventoryMap['M'] !== undefined ? `- Còn: ${inventoryMap['M']} thùng` : ''}</SelectItem>
+                          <SelectItem value="L">Size L (Thùng lớn) {inventoryMap['L'] !== undefined ? `- Còn: ${inventoryMap['L']} thùng` : ''}</SelectItem>
                         </SelectContent>
                       </Select>
                       <div className="bg-blue-50 text-blue-800 p-3 rounded-md text-sm space-y-1">

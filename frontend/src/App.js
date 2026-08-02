@@ -1,8 +1,21 @@
 import React, { Suspense } from 'react';
 import "@/App.css";
-import { BrowserRouter, Routes, Route, Navigate, Link, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Link, useLocation, useNavigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import AdminLayout from "@/components/AdminLayout";
+
+const RedirectHandler = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  React.useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const redirect = params.get('redirect');
+    if (redirect) {
+      navigate(redirect, { replace: true });
+    }
+  }, [location, navigate]);
+  return null;
+};
 
 const AdminDashboard = React.lazy(() => import("@/pages/AdminDashboard"));
 const OrdersManagement = React.lazy(() => import("@/pages/OrdersManagement"));
@@ -13,6 +26,7 @@ const ShipperApp = React.lazy(() => import("@/pages/ShipperApp"));
 const ShipperRegister = React.lazy(() => import("@/pages/ShipperRegister"));
 const ShipperLogin = React.lazy(() => import("@/pages/ShipperLogin"));
 const ShipperSetupPassword = React.lazy(() => import("@/pages/ShipperSetupPassword"));
+const ShipperForgotPassword = React.lazy(() => import("@/pages/ShipperForgotPassword"));
 const TrackingPage = React.lazy(() => import("@/pages/TrackingPage"));
 const CustomerHub = React.lazy(() => import("@/pages/CustomerHub"));
 const CustomerRegister = React.lazy(() => import("@/pages/CustomerRegister"));
@@ -146,6 +160,7 @@ function App() {
     <div className="App">
       <BrowserRouter basename={process.env.PUBLIC_URL}>
         <AuthProvider>
+          <RedirectHandler />
           <Suspense fallback={
             <div className="flex items-center justify-center min-h-screen">
               <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
@@ -158,6 +173,7 @@ function App() {
               <Route path="/shipper/register" element={<ShipperRegister />} />
               <Route path="/shipper/login" element={<ShipperLogin />} />
               <Route path="/shipper/setup-password" element={<ShipperSetupPassword />} />
+              <Route path="/shipper/forgot-password" element={<ShipperForgotPassword />} />
               <Route path="/track" element={<TrackingPage />} />
               <Route path="/track/:orderId" element={<TrackingPage />} />
 
