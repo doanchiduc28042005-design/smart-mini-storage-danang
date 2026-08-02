@@ -81,6 +81,6 @@ export const deleteEmployee = (employeeId) => api.delete(`/employees/${employeeI
 export const getInventory = () => api.get('/inventory');
 
 // ============== ORDER RENEWAL ==============
-export const renewOrder = (orderId, months) => api.post(`/orders/${orderId}/renew`, { months });
+export const renewOrder = (orderId, data) => api.post(`/orders/${orderId}/renew`, data);
 
 export default api;
