@@ -43,9 +43,12 @@ export default function ShipperForgotPwdScreen({ navigation }) {
         </div>
       `;
 
-      await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      const emailRes = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Origin': 'https://doanchiduc28042005-design.github.io'
+        },
         body: JSON.stringify({
           service_id: 'service_sggjbk5',
           template_id: 'template_5wjogpj',
@@ -57,6 +60,10 @@ export default function ShipperForgotPwdScreen({ navigation }) {
           }
         })
       });
+
+      if (!emailRes.ok) {
+        throw new Error('Không thể gửi email. Hãy thử lại.');
+      }
 
       setSuccess(true);
     } catch (error) {

@@ -1483,12 +1483,16 @@ async def renew_order(order_id: str, data: OrderRenewRequest):
         }}
     )
     
+    # Convert to GMT+7 for notification
+    gmt7 = timezone(timedelta(hours=7))
+    new_expiry_gmt7 = new_expiry.astimezone(gmt7)
+    
     # Send notification to customer
     notif = {
         "id": str(uuid.uuid4()),
         "customer_id": order["customer_id"],
         "title": "✅ Gia hạn thành công!",
-        "message": f"Đơn hàng {order_id} đã được gia hạn thêm {data.months} tháng. Thời hạn mới: {new_expiry.strftime('%d/%m/%Y')}.",
+        "message": f"Đơn hàng {order_id} đã được gia hạn thêm {data.months} tháng. Thời hạn mới: {new_expiry_gmt7.strftime('%d/%m/%Y')}.",
         "is_read": False,
         "created_at": now.isoformat()
     }
