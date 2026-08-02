@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { forgotShipperPassword } from '@/services/api';
+import { sendShipperForgotPasswordEmail } from '@/services/emailService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,7 +16,15 @@ const ShipperForgotPassword = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await forgotShipperPassword({ email });
+      const response = await forgotShipperPassword({ email });
+      
+      const { shipper } = response.data;
+      const isGithubPages = window.location.hostname.includes('github.io');
+      const basePath = isGithubPages ? '/smart-mini-storage-danang' : '';
+      const setupLink = `${window.location.origin}${basePath}/?redirect=/shipper/setup-password`;
+      
+      await sendShipperForgotPasswordEmail(shipper.email, shipper.shipper_code, setupLink);
+
       setSuccess(true);
     } catch (error) {
       alert(error.response?.data?.detail || "Không tìm thấy tài khoản hoặc có lỗi xảy ra.");

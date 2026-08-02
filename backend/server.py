@@ -984,8 +984,13 @@ async def forgot_shipper_password(input: ForgotPasswordInput, background_tasks: 
         {"$set": {"password_hash": ""}}
     )
     
-    background_tasks.add_task(send_shipper_approval_email, shipper['email'], shipper['shipper_code'], setup_link)
-    return {"message": "Đã gửi email khôi phục mật khẩu"}
+    return {
+        "message": "Đã reset mật khẩu",
+        "shipper": {
+            "email": shipper["email"],
+            "shipper_code": shipper["shipper_code"]
+        }
+    }
 
 @api_router.post("/shippers/login")
 async def login_shipper(input: ShipperLogin):

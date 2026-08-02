@@ -57,6 +57,44 @@ export const sendShipperApprovalEmail = async (toEmail, shipperCode, setupLink) 
   }
 };
 
+export const sendShipperForgotPasswordEmail = async (toEmail, shipperCode, setupLink) => {
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; padding: 20px; border-radius: 8px;">
+      <h2 style="color: #2e6c80; text-align: center;">Smart Mini Storage</h2>
+      <hr style="border: none; border-top: 1px solid #eee; margin-bottom: 20px;">
+      <p>Chào bạn,</p>
+      <p>Chúng tôi nhận được yêu cầu khôi phục mật khẩu tài khoản Shipper của bạn tại <strong>Smart Mini Storage</strong>.</p>
+      
+      <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0; text-align: center; border: 1px dashed #ccc;">
+        <p style="margin: 0; font-size: 16px;">Mã Shipper của bạn là:</p>
+        <strong style="font-size: 24px; color: #d9534f; display: block; margin-top: 5px;">${shipperCode}</strong>
+      </div>
+
+      <p>Vui lòng nhấp vào nút bên dưới để thiết lập lại mật khẩu mới:</p>
+      
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${setupLink}" style="display: inline-block; padding: 12px 25px; background-color: #d9534f; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px;">Khôi phục mật khẩu</a>
+      </div>
+      
+      <p style="color: #777; font-size: 14px;">Nếu bạn không yêu cầu đổi mật khẩu, vui lòng bỏ qua email này.</p>
+      <p style="margin-top: 30px;">Trân trọng,<br><strong>Đội ngũ Smart Mini Storage</strong></p>
+    </div>
+  `;
+
+  try {
+    const result = await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_APPROVAL, {
+      to_email: toEmail,
+      subject: 'Yêu cầu khôi phục mật khẩu Shipper Smart Mini Storage',
+      message: htmlContent,
+    });
+    console.log('Forgot password email sent successfully:', result);
+    return { success: true, result };
+  } catch (error) {
+    console.error('Failed to send forgot password email:', error);
+    return { success: false, error };
+  }
+};
+
 /**
  * Send rejection email to shipper with reason
  */
