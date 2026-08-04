@@ -26,7 +26,7 @@ export default function AiChatScreen({ navigation }) {
       // The backend expects: { messages: [{ role: "user", content: "..." }] }
       const apiMessages = updatedMessages
         .filter(m => m.id !== '1') // Skip the local welcome message
-        .map(m => ({ role: m.role, content: m.text }));
+        .map(m => ({ role: m.role === 'ai' ? 'assistant' : m.role, content: m.text }));
 
       const { data } = await chatWithAI(apiMessages);
       const aiResponse = { id: (Date.now() + 1).toString(), role: 'ai', text: data.reply || '...' };
