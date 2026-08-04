@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, RefreshControl, StyleSheet, ActivityIndicator, Alert, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { getMyOrders, renewOrder } from '../../services/api';
 
 const statusLabels = {
@@ -47,7 +48,11 @@ export default function CustomerOrdersScreen({ navigation }) {
     }
   };
 
-  useEffect(() => { loadOrders(); }, [loadOrders]);
+  useFocusEffect(
+    useCallback(() => {
+      loadOrders();
+    }, [loadOrders])
+  );
 
   const onRefresh = () => { setRefreshing(true); loadOrders(); };
 

@@ -9,6 +9,7 @@ import CreateOrderScreen from '../screens/customer/CreateOrderScreen';
 import OrderDetailScreen from '../screens/customer/OrderDetailScreen';
 import NotificationsScreen from '../screens/customer/NotificationsScreen';
 import CustomerProfileScreen from '../screens/customer/CustomerProfileScreen';
+import AiChatScreen from '../screens/customer/AiChatScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -19,6 +20,7 @@ function HomeStack() {
       <Stack.Screen name="HomeMain" component={CustomerHomeScreen} />
       <Stack.Screen name="CreateOrder" component={CreateOrderScreen} />
       <Stack.Screen name="OrderDetail" component={OrderDetailScreen} />
+      <Stack.Screen name="AiChat" component={AiChatScreen} />
     </Stack.Navigator>
   );
 }

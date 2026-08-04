@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, ActivityIndicator, Switch } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, ActivityIndicator, Switch, Platform } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { createMyOrder } from '../../services/api';
@@ -12,9 +13,47 @@ const BOX_SIZES = [
 
 export default function CreateOrderScreen({ navigation }) {
   const { user } = useAuth();
-  const [boxes, setBoxes] = useState([{ size: 'M', item_description: '', notes: '' }]);
+  
+  const SUGGESTED_DESCS = {
+    'S': 'Quần áo, tài liệu, đồ cá nhân nhỏ',
+    'M': 'Chăn ga, đồ thể thao, hộp carton vừa',
+    'L': 'Vali lớn, chăn bông dày, đồ cồng kềnh'
+  };
+
+  const [boxes, setBoxes] = useState([{ size: 'M', item_description: SUGGESTED_DESCS['M'], notes: '' }]);
   const [pickupAddress, setPickupAddress] = useState(user?.default_pickup_address || '');
   const [pickupTime, setPickupTime] = useState('');
+  
+  const [pickupDateObj, setPickupDateObj] = useState(new Date());
+  const [showPicker, setShowPicker] = useState(false);
+  const [pickerMode, setPickerMode] = useState('date');
+
+  const openPicker = () => {
+    setPickerMode(Platform.OS === 'ios' ? 'datetime' : 'date');
+    setShowPicker(true);
+  };
+
+  const formatAndSet = (d) => {
+    const fmt = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    setPickupTime(fmt);
+  };
+
+  const onDateChange = (event, selectedDate) => {
+    if (Platform.OS === 'android') {
+      setShowPicker(false);
+    }
+    if (selectedDate) {
+      setPickupDateObj(selectedDate);
+      formatAndSet(selectedDate);
+      
+      if (Platform.OS === 'android' && pickerMode === 'date' && event.type === 'set') {
+        setTimeout(() => {
+          setPickerMode('time');
+          setShowPicker(true);
+        }, 100);
+      }
+    }
+  };
   const [deliveryMethod, setDeliveryMethod] = useState('standard');
   const [distanceKm, setDistanceKm] = useState('3');
   const [floorNumber, setFloorNumber] = useState('0');
@@ -24,17 +63,29 @@ export default function CreateOrderScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
 
   const addBox = () => {
-    setBoxes([...boxes, { size: 'M', item_description: '', notes: '' }]);
+    setBoxes([...boxes, { size: 'M', item_description: SUGGESTED_DESCS['M'], notes: '' }]);
   };
 
   const removeBox = (index) => {
     if (boxes.length <= 1) return;
     setBoxes(boxes.filter((_, i) => i !== index));
   };
-
   const updateBox = (index, field, value) => {
     const updated = [...boxes];
-    updated[index][field] = value;
+    const currentBox = updated[index];
+    
+    // Auto-fill description logic
+    if (field === 'size') {
+      const oldSize = currentBox.size;
+      const oldDefaultDesc = SUGGESTED_DESCS[oldSize];
+      
+      // If desc is empty or untouched from previous auto-fill, replace it
+      if (!currentBox.item_description || currentBox.item_description === oldDefaultDesc) {
+        currentBox.item_description = SUGGESTED_DESCS[value] || '';
+      }
+    }
+    
+    currentBox[field] = value;
     setBoxes(updated);
   };
 
@@ -164,13 +215,25 @@ export default function CreateOrderScreen({ navigation }) {
           />
 
           <Text style={styles.fieldLabel}>Thời gian lấy hàng *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="VD: 2025-01-15 09:00"
-            placeholderTextColor="#9ca3af"
-            value={pickupTime}
-            onChangeText={setPickupTime}
-          />
+          <TouchableOpacity
+            style={[styles.input, { justifyContent: 'center' }]}
+            onPress={openPicker}
+          >
+            <Text style={{ color: pickupTime ? '#1f2937' : '#9ca3af' }}>
+              {pickupTime ? pickupTime : 'Nhấn để chọn ngày giờ lấy hàng...'}
+            </Text>
+          </TouchableOpacity>
+
+          {showPicker && (
+            <DateTimePicker
+              value={pickupDateObj}
+              mode={pickerMode}
+              is24Hour={true}
+              display="default"
+              onChange={onDateChange}
+              minimumDate={new Date()}
+            />
+          )}
         </View>
 
         {/* Shipping Options */}

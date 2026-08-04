@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, RefreshControl, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { getMyOrders, getNotifications } from '../../services/api';
 
@@ -36,7 +37,11 @@ export default function CustomerHomeScreen({ navigation }) {
     }
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
 
   const onRefresh = () => { setRefreshing(true); loadData(); };
 
@@ -183,6 +188,14 @@ export default function CustomerHomeScreen({ navigation }) {
 
         <View style={{ height: 20 }} />
       </ScrollView>
+
+      {/* AI Chatbot FAB */}
+      <TouchableOpacity 
+        style={styles.fab} 
+        onPress={() => navigation.navigate('AiChat')}
+      >
+        <Text style={styles.fabIcon}>🤖</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -248,4 +261,23 @@ const styles = StyleSheet.create({
   orderAddress: { fontSize: 12, color: '#6b7280', marginTop: 4 },
   orderShipping: { fontSize: 12, color: '#4f46e5', fontWeight: '500', marginTop: 4 },
   orderDate: { fontSize: 11, color: '#9ca3af', marginTop: 6 },
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#4f46e5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  fabIcon: {
+    fontSize: 28,
+  },
 });

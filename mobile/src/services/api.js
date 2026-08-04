@@ -80,5 +80,7 @@ export const deleteEmployee = (employeeId) => api.delete(`/employees/${employeeI
 // ============== INVENTORY ==============
 export const getInventory = () => api.get('/inventory');
 
+export const chatWithAI = (messages) => api.post('/chat', { messages });
+
 
 export default api;
