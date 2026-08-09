@@ -1508,6 +1508,7 @@ async def renew_order(order_id: str, data: OrderRenewRequest):
 # ============== ROOT ENDPOINT ==============
 
 @api_router.get("/")
+@api_router.head("/")
 async def root():
     return {"message": "Smart Mini Storage API v1.0"}
 
