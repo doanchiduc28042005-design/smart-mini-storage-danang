@@ -44,14 +44,18 @@ const statusColors = {
   'WAITING_FOR_PICKUP': '#eab308', // yellow
   'PICKED_UP': '#3b82f6',          // blue
   'IN_HUB': '#a855f7',              // purple
-  'DELIVERED': '#22c55e',           // green
+  'WAITING_FOR_RETURN': '#f97316',    // orange
+  'RETURNING': '#14b8a6',             // teal
+  'RETURNED': '#22c55e',              // green
 };
 
 const statusLabels = {
   'WAITING_FOR_PICKUP': '⏳ Chờ Lấy',
   'PICKED_UP': '🚚 Đã Lấy',
   'IN_HUB': '🏢 Ở Hub',
-  'DELIVERED': '✅ Đã Giao',
+  'WAITING_FOR_RETURN': '⏳ Chờ Trả Hàng',
+  'RETURNING': '🚚 Đang Trả Hàng',
+  'RETURNED': '✅ Đã Trả Hàng',
 };
 
 const iconCache = {};

@@ -8,7 +8,9 @@ const statusLabels = {
   'WAITING_FOR_PICKUP': { label: '⏳ Chờ Lấy', color: '#f59e0b', bg: '#fef3c7' },
   'PICKED_UP': { label: '🚚 Đã Lấy', color: '#3b82f6', bg: '#dbeafe' },
   'IN_HUB': { label: '🏢 Ở Hub', color: '#8b5cf6', bg: '#ede9fe' },
-  'DELIVERED': { label: '✅ Đã Giao', color: '#10b981', bg: '#d1fae5' },
+  'WAITING_FOR_RETURN': { label: '⏳ Chờ Trả Hàng', color: '#c2410c', bg: '#ffedd5' },
+  'RETURNING': { label: '🚚 Đang Trả', color: '#0f766e', bg: '#ccfbf1' },
+  'RETURNED': { label: '✅ Đã Trả', color: '#10b981', bg: '#d1fae5' },
 };
 
 export default function ShipperOrdersScreen() {

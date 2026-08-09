@@ -39,7 +39,7 @@ export default function AdminDashboardScreen() {
     { title: 'Chờ lấy hàng', value: stats?.waiting || orders.filter(o => o.status === 'WAITING_FOR_PICKUP').length, color: '#f59e0b', bg: '#fef3c7' },
     { title: 'Đang vận chuyển', value: stats?.picked_up || orders.filter(o => o.status === 'PICKED_UP').length, color: '#8b5cf6', bg: '#ede9fe' },
     { title: 'Trong kho', value: stats?.in_hub || orders.filter(o => o.status === 'IN_HUB').length, color: '#06b6d4', bg: '#cffafe' },
-    { title: 'Đã giao', value: stats?.delivered || orders.filter(o => o.status === 'DELIVERED').length, color: '#10b981', bg: '#d1fae5' },
+    { title: 'Đã giao', value: stats?.returned || orders.filter(o => o.status === 'RETURNED').length, color: '#10b981', bg: '#d1fae5' },
     { title: 'Tổng khách hàng', value: stats?.total_customers || 0, color: '#ec4899', bg: '#fce7f3' },
   ];
 

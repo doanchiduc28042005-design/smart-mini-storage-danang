@@ -175,75 +175,9 @@ async def cleanup_inactive_shippers_task():
         # Wait 24 hours
         await asyncio.sleep(86400)
 
-async def check_order_expiry_task():
-    """Background task: check orders nearing expiry and send notifications at 10/7/3/1 days."""
-    while True:
-        try:
-            now = datetime.now(timezone.utc)
-            # Find all non-delivered orders with storage_expiry_date
-            orders = await db.orders.find(
-                {"status": {"$ne": "DELIVERED"}, "storage_expiry_date": {"$exists": True}},
-                {"_id": 0}
-            ).to_list(10000)
-            
-            for order in orders:
-                expiry_str = order.get("storage_expiry_date")
-                if not expiry_str:
-                    continue
-                expiry_date = datetime.fromisoformat(expiry_str) if isinstance(expiry_str, str) else expiry_str
-                if expiry_date.tzinfo is None:
-                    expiry_date = expiry_date.replace(tzinfo=timezone.utc)
-                
-                days_remaining = (expiry_date - now).days
-                
-                # Only notify at specific milestones: 10, 7, 3, 1
-                if days_remaining in [10, 7, 3, 1]:
-                    # Check if we already sent this exact notification today
-                    notif_key = f"expiry_{order['order_id']}_{days_remaining}d"
-                    existing_notif = await db.notifications.find_one({"notif_key": notif_key})
-                    if existing_notif:
-                        continue
-                    
-                    # Create notification
-                    urgency = "🔴" if days_remaining <= 3 else "🟡"
-                    notif = {
-                        "id": str(uuid.uuid4()),
-                        "customer_id": order["customer_id"],
-                        "title": f"{urgency} Đơn hàng {order['order_id']} sắp hết hạn!",
-                        "message": f"Đơn hàng {order['order_id']} còn {days_remaining} ngày lưu trữ (hết hạn {expiry_date.strftime('%d/%m/%Y')}). Vui lòng gia hạn hoặc nhận lại hàng.",
-                        "is_read": False,
-                        "notif_key": notif_key,
-                        "created_at": now.isoformat()
-                    }
-                    await db.notifications.insert_one(notif)
-                    logging.info(f"Sent expiry notification for {order['order_id']}: {days_remaining} days remaining")
-                
-                # Mark as expired
-                elif days_remaining <= 0:
-                    notif_key = f"expired_{order['order_id']}"
-                    existing_notif = await db.notifications.find_one({"notif_key": notif_key})
-                    if not existing_notif:
-                        notif = {
-                            "id": str(uuid.uuid4()),
-                            "customer_id": order["customer_id"],
-                            "title": f"🔴 Đơn hàng {order['order_id']} ĐÃ HẾT HẠN!",
-                            "message": f"Đơn hàng {order['order_id']} đã hết thời hạn lưu trữ. Vui lòng liên hệ để gia hạn hoặc nhận lại hàng ngay.",
-                            "is_read": False,
-                            "notif_key": notif_key,
-                            "created_at": now.isoformat()
-                        }
-                        await db.notifications.insert_one(notif)
-                    
-        except Exception as e:
-            logging.error(f"Error in expiry check task: {e}")
-        
-        # Run every 6 hours
-        await asyncio.sleep(21600)
-
 @app.on_event("startup")
 async def start_background_tasks():
     asyncio.create_task(cleanup_inactive_shippers_task())
-    asyncio.create_task(check_order_expiry_task())
 
 # ============== AUTH HELPERS ==============
 import asyncio
@@ -448,8 +382,7 @@ class OrderCreate(BaseModel):
     customer_name: str
     order_id: Optional[str] = None  # If not provided, will auto-generate
 
-class OrderRenewRequest(BaseModel):
-    months: int = 1  # Number of months to extend
+
 
 class CustomerOrderCreate(BaseModel):
     boxes: List[BoxOrderItem]
@@ -461,7 +394,6 @@ class CustomerOrderCreate(BaseModel):
     distance_km: float = 3.0  # Distance from nearest station in km
     floor_number: int = 0  # 0 = ground floor
     has_elevator: bool = True
-    rental_months: int = 1  # Expected rental duration
 
 
 class TrackingHistory(BaseModel):
@@ -503,7 +435,7 @@ SHIPPING_STAIR_FEE = 15000       # +15,000 VND for stairs (floor 3+, no elevator
 SHIPPING_BULK_FEE = 5000         # +5,000 VND per extra box (2nd box onwards)
 
 def calculate_shipping_fee(delivery_method: str, distance_km: float, floor_number: int, 
-                           has_elevator: bool, rental_months: int, num_boxes: int) -> dict:
+                           has_elevator: bool, num_boxes: int) -> dict:
     """Calculate shipping fee with detailed breakdown.
     Returns dict with fee breakdown for both outbound (send) and return trips."""
     
@@ -562,23 +494,6 @@ def calculate_shipping_fee(delivery_method: str, distance_km: float, floor_numbe
     outbound_fee = single_trip_fee  # Lượt gửi
     return_fee = single_trip_fee     # Lượt trả
     
-    # --- Long-term rental discounts ---
-    outbound_discount = 0
-    return_discount = 0
-    
-    if rental_months >= 6:
-        # Free both ways
-        outbound_discount = outbound_fee
-        return_discount = return_fee
-        outbound_fee = 0
-        return_fee = 0
-        notes.append(f"Thuê {rental_months} tháng: Miễn phí ship CẢ 2 CHIỀU")
-    elif rental_months >= 3:
-        # Free outbound only
-        outbound_discount = outbound_fee
-        outbound_fee = 0
-        notes.append(f"Thuê {rental_months} tháng: Miễn phí ship chiều GỬI")
-    
     total_shipping_fee = outbound_fee + return_fee
     
     return {
@@ -595,10 +510,7 @@ def calculate_shipping_fee(delivery_method: str, distance_km: float, floor_numbe
             "has_elevator": has_elevator,
             "stair_fee": stair_fee,
             "bulk_discount": bulk_discount,
-            "outbound_discount": outbound_discount,
-            "return_discount": return_discount,
-            "rental_months": rental_months,
-            "single_trip_before_discount": single_trip_fee + (outbound_discount if rental_months >= 3 else 0),
+            "single_trip_before_discount": single_trip_fee,
         },
         "notes": notes
     }
@@ -817,13 +729,10 @@ async def customer_create_order(data: CustomerOrderCreate, current_user: dict = 
         distance_km=data.distance_km,
         floor_number=data.floor_number,
         has_elevator=data.has_elevator,
-        rental_months=data.rental_months,
         num_boxes=len(data.boxes)
     )
     
     now = datetime.now(timezone.utc)
-    # Calculate storage expiry date based on rental_months
-    storage_expiry = now + timedelta(days=data.rental_months * 30)
     
     order_doc = {
         "id": str(uuid.uuid4()),
@@ -840,10 +749,8 @@ async def customer_create_order(data: CustomerOrderCreate, current_user: dict = 
         "last_updated": now.isoformat(),
         "last_latitude": None,
         "last_longitude": None,
-        "storage_expiry_date": storage_expiry.isoformat(),
         # Shipping fee data
         "delivery_method": data.delivery_method,
-        "rental_months": data.rental_months,
         "shipping_fee": shipping_info["total_shipping_fee"],
         "shipping_fee_details": shipping_info,
     }
@@ -1185,6 +1092,18 @@ async def delete_order(order_id: str, input: BoxDeleteRequest):
     # Also delete tracking history
     await db.order_tracking_history.delete_many({"order_id": order_id})
     
+    # Restore inventory if the order was in an active state
+    active_storage_states = ["WAITING_FOR_PICKUP", "PICKED_UP", "IN_HUB"]
+    if order.get("status") in active_storage_states:
+        from collections import Counter
+        items = order.get("items", [])
+        size_counts = Counter(item.get("size", "M") for item in items)
+        for size, count in size_counts.items():
+            await db.box_inventory.update_one(
+                {"size": size},
+                {"$inc": {"available": count, "in_use": -count}}
+            )
+    
     # Send notification to customer
     notification = Notification(
         customer_id=order["customer_id"],
@@ -1313,8 +1232,11 @@ async def process_qr_scan(data: QRScanRequest):
         {"$set": update_fields}
     )
     
-    # If status changed to DELIVERED, return boxes to inventory
-    if data.status == "DELIVERED" and previous_status != "DELIVERED":
+    # Return boxes to inventory when status transitions out of active storage
+    active_storage_states = ["WAITING_FOR_PICKUP", "PICKED_UP", "IN_HUB"]
+    return_states = ["WAITING_FOR_RETURN", "RETURNING", "RETURNED"]
+    
+    if data.status in return_states and previous_status in active_storage_states:
         from collections import Counter
         items = order.get("items", [])
         size_counts = Counter(item.get("size", "M") for item in items)
@@ -1375,12 +1297,13 @@ async def generate_qr(order_id: str):
 
 @api_router.get("/dashboard/stats")
 async def get_dashboard_stats():
-    # Count orders by status
     total_orders = await db.orders.count_documents({})
     waiting_pickup = await db.orders.count_documents({"status": "WAITING_FOR_PICKUP"})
     picked_up = await db.orders.count_documents({"status": "PICKED_UP"})
     in_hub = await db.orders.count_documents({"status": "IN_HUB"})
-    delivered = await db.orders.count_documents({"status": "DELIVERED"})
+    waiting_return = await db.orders.count_documents({"status": "WAITING_FOR_RETURN"})
+    returning = await db.orders.count_documents({"status": "RETURNING"})
+    returned = await db.orders.count_documents({"status": "RETURNED"})
     
     # Count customers and shippers
     total_customers = await db.customers.count_documents({})
@@ -1396,7 +1319,9 @@ async def get_dashboard_stats():
             "waiting_pickup": waiting_pickup,
             "picked_up": picked_up,
             "in_hub": in_hub,
-            "delivered": delivered
+            "waiting_return": waiting_return,
+            "returning": returning,
+            "returned": returned
         },
         "customers": {
             "total": total_customers
@@ -1420,6 +1345,7 @@ async def get_inventory():
 class InventoryUpdate(BaseModel):
     total: Optional[int] = None
     available: Optional[int] = None
+    in_use: Optional[int] = None
 
 @api_router.put("/inventory/{size}")
 async def update_inventory(size: str, data: InventoryUpdate):
@@ -1437,6 +1363,8 @@ async def update_inventory(size: str, data: InventoryUpdate):
         update_fields["available"] = data.total - in_use
     if data.available is not None:
         update_fields["available"] = data.available
+    if data.in_use is not None:
+        update_fields["in_use"] = data.in_use
     
     if update_fields:
         await db.box_inventory.update_one({"size": size}, {"$set": update_fields}, upsert=True)
@@ -1444,67 +1372,6 @@ async def update_inventory(size: str, data: InventoryUpdate):
     updated = await db.box_inventory.find_one({"size": size}, {"_id": 0})
     return updated
 
-# ============== ORDER RENEWAL ENDPOINT ==============
-
-@api_router.post("/orders/{order_id}/renew")
-async def renew_order(order_id: str, data: OrderRenewRequest):
-    """Extend storage duration for an order"""
-    order = await db.orders.find_one({"order_id": order_id})
-    if not order:
-        raise HTTPException(status_code=404, detail="Đơn hàng không tồn tại")
-    
-    if data.months < 1 or data.months > 12:
-        raise HTTPException(status_code=400, detail="Số tháng gia hạn phải từ 1 đến 12")
-    
-    now = datetime.now(timezone.utc)
-    
-    # Get current expiry or default to now
-    current_expiry_str = order.get("storage_expiry_date")
-    if current_expiry_str:
-        current_expiry = datetime.fromisoformat(current_expiry_str)
-        if current_expiry.tzinfo is None:
-            current_expiry = current_expiry.replace(tzinfo=timezone.utc)
-    else:
-        current_expiry = now
-    
-    # Extend from the later of current_expiry or now
-    extend_from = max(current_expiry, now)
-    new_expiry = extend_from + timedelta(days=data.months * 30)
-    
-    # Update rental_months
-    old_months = order.get("rental_months", 1)
-    new_total_months = old_months + data.months
-    
-    await db.orders.update_one(
-        {"order_id": order_id},
-        {"$set": {
-            "storage_expiry_date": new_expiry.isoformat(),
-            "rental_months": new_total_months,
-            "last_updated": now.isoformat()
-        }}
-    )
-    
-    # Convert to GMT+7 for notification
-    gmt7 = timezone(timedelta(hours=7))
-    new_expiry_gmt7 = new_expiry.astimezone(gmt7)
-    
-    # Send notification to customer
-    notif = {
-        "id": str(uuid.uuid4()),
-        "customer_id": order["customer_id"],
-        "title": "✅ Gia hạn thành công!",
-        "message": f"Đơn hàng {order_id} đã được gia hạn thêm {data.months} tháng. Thời hạn mới: {new_expiry_gmt7.strftime('%d/%m/%Y')}.",
-        "is_read": False,
-        "created_at": now.isoformat()
-    }
-    await db.notifications.insert_one(notif)
-    
-    return {
-        "success": True,
-        "message": f"Đã gia hạn thêm {data.months} tháng",
-        "new_expiry_date": new_expiry.isoformat(),
-        "total_months": new_total_months
-    }
 
 # ============== ROOT ENDPOINT ==============
 

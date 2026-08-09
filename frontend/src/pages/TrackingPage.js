@@ -11,7 +11,9 @@ const statusConfig = {
   'WAITING_FOR_PICKUP': { label: '⏳ Chờ Shipper Lấy', color: 'bg-yellow-100 text-yellow-800 border-yellow-300', step: 1 },
   'PICKED_UP': { label: '🚚 Đã Lấy Hàng', color: 'bg-blue-100 text-blue-800 border-blue-300', step: 2 },
   'IN_HUB': { label: '🏢 Đang Ở Hub', color: 'bg-purple-100 text-purple-800 border-purple-300', step: 3 },
-  'DELIVERED': { label: '✅ Đã Giao Thành Công', color: 'bg-green-100 text-green-800 border-green-300', step: 4 }
+  'WAITING_FOR_RETURN': { label: '⏳ Chờ Trả Hàng', color: 'bg-orange-100 text-orange-800 border-orange-300', step: 4 },
+  'RETURNING': { label: '🚚 Đang Trả Hàng', color: 'bg-teal-100 text-teal-800 border-teal-300', step: 5 },
+  'RETURNED': { label: '✅ Đã Trả Hàng', color: 'bg-green-100 text-green-800 border-green-300', step: 6 }
 };
 
 const ProgressBar = ({ currentStatus }) => {
@@ -19,7 +21,9 @@ const ProgressBar = ({ currentStatus }) => {
     { key: 'WAITING_FOR_PICKUP', label: 'Chờ Lấy', icon: '📦' },
     { key: 'PICKED_UP', label: 'Đã Lấy', icon: '🚚' },
     { key: 'IN_HUB', label: 'Ở Hub', icon: '🏢' },
-    { key: 'DELIVERED', label: 'Đã Giao', icon: '✅' }
+    { key: 'WAITING_FOR_RETURN', label: 'Chờ Trả', icon: '⏳' },
+    { key: 'RETURNING', label: 'Đang Trả', icon: '🚚' },
+    { key: 'RETURNED', label: 'Hoàn Tất', icon: '✅' }
   ];
 
   const currentStep = statusConfig[currentStatus]?.step || 1;

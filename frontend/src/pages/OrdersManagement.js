@@ -15,14 +15,18 @@ const statusColors = {
   'WAITING_FOR_PICKUP': 'bg-yellow-100 text-yellow-800 border-yellow-300',
   'PICKED_UP': 'bg-blue-100 text-blue-800 border-blue-300',
   'IN_HUB': 'bg-purple-100 text-purple-800 border-purple-300',
-  'DELIVERED': 'bg-green-100 text-green-800 border-green-300'
+  'WAITING_FOR_RETURN': 'bg-orange-100 text-orange-800 border-orange-300',
+  'RETURNING': 'bg-teal-100 text-teal-800 border-teal-300',
+  'RETURNED': 'bg-green-100 text-green-800 border-green-300'
 };
 
 const statusLabels = {
   'WAITING_FOR_PICKUP': '⏳ Chờ Lấy',
   'PICKED_UP': '🚚 Đã Lấy',
   'IN_HUB': '🏢 Ở Hub',
-  'DELIVERED': '✅ Đã Giao'
+  'WAITING_FOR_RETURN': '⏳ Chờ Trả Hàng',
+  'RETURNING': '🚚 Đang Trả Hàng',
+  'RETURNED': '✅ Đã Trả Hàng'
 };
 
 const OrdersManagement = () => {
@@ -40,11 +44,6 @@ const OrdersManagement = () => {
   const [selectedCustomer, setSelectedCustomer] = useState('');
   const [customorderId, setCustomorderId] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [showRenewDialog, setShowRenewDialog] = useState(false);
-  const [renewingOrder, setRenewingOrder] = useState(null);
-  const [renewMonths, setRenewMonths] = useState(1);
-  const [renewLoading, setRenewLoading] = useState(false);
-
   useEffect(() => {
     loadorders();
     loadCustomers();
@@ -110,22 +109,6 @@ const OrdersManagement = () => {
     }
   };
 
-  const handleRenew = async () => {
-    if (!renewingOrder) return;
-    setRenewLoading(true);
-    try {
-      await renewOrder(renewingOrder.order_id, renewMonths);
-      alert(`Đã gia hạn thêm ${renewMonths} tháng cho đơn ${renewingOrder.order_id}!`);
-      setShowRenewDialog(false);
-      setRenewingOrder(null);
-      setRenewMonths(1);
-      loadorders();
-    } catch (e) {
-      alert(e.response?.data?.detail || 'Lỗi khi gia hạn');
-    } finally {
-      setRenewLoading(false);
-    }
-  };
 
   const handleViewHistory = async (order) => {
     setSelectedorder(order);
@@ -189,10 +172,12 @@ const OrdersManagement = () => {
   });
 
   // Group orders by status for tabs
-  const waitingorders = filteredorders.filter(b => b.status === 'WAITING_FOR_PICKUP');
-  const pickedUporders = filteredorders.filter(b => b.status === 'PICKED_UP');
-  const inHuborders = filteredorders.filter(b => b.status === 'IN_HUB');
-  const deliveredorders = filteredorders.filter(b => b.status === 'DELIVERED');
+  const waitingorders = filteredorders.filter(o => o.status === 'WAITING_FOR_PICKUP');
+  const pickedUporders = filteredorders.filter(o => o.status === 'PICKED_UP');
+  const inHuborders = filteredorders.filter(o => o.status === 'IN_HUB');
+  const waitingReturnorders = filteredorders.filter(o => o.status === 'WAITING_FOR_RETURN');
+  const returningorders = filteredorders.filter(o => o.status === 'RETURNING');
+  const returnedorders = filteredorders.filter(o => o.status === 'RETURNED');
 
   // Render single order card (reusable)
   const renderorderCard = (order) => (
@@ -242,34 +227,18 @@ const OrdersManagement = () => {
                 — {order.shipping_fee === 0 ? <span className="text-green-600">Miễn phí</span> : `${order.shipping_fee.toLocaleString()} VND`}
               </span>
             )}
-            {order.rental_months && order.rental_months >= 3 && (
-              <span className="ml-1 text-green-600">(Thuê {order.rental_months}T)</span>
-            )}
           </p>
         )}
-        <p className="text-xs text-gray-500">
-          Cập nhật: {new Date(order.last_updated).toLocaleString('vi-VN')}
-        </p>
-        {/* Expiry info */}
-        {order.storage_expiry_date && (() => {
-          const days = Math.ceil((new Date(order.storage_expiry_date) - new Date()) / (1000 * 60 * 60 * 24));
-          const color = days <= 0 ? 'text-red-700 bg-red-50' : days <= 3 ? 'text-red-600 bg-red-50' : days <= 7 ? 'text-yellow-700 bg-yellow-50' : 'text-gray-600 bg-gray-50';
+        {/* Storage duration */}
+        {order.hub_arrival_date && (() => {
+          const start = new Date(order.hub_arrival_date);
+          const now = new Date();
+          const diffInTime = now.getTime() - start.getTime();
+          const diffInDays = Math.floor(diffInTime / (1000 * 3600 * 24));
           return (
-            <div className={`flex items-center justify-between text-xs p-1.5 rounded ${color}`}>
-              <span>
-                {days <= 0 ? '❌ Hết hạn' : `📅 Còn ${days} ngày (${new Date(order.storage_expiry_date).toLocaleDateString('vi-VN')})`}
-              </span>
-              <button
-                className="text-indigo-600 font-medium hover:underline"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setRenewingOrder(order);
-                  setRenewMonths(1);
-                  setShowRenewDialog(true);
-                }}
-              >
-                🔄 Gia hạn
-              </button>
+            <div className="flex items-center justify-between text-xs p-1.5 rounded text-blue-700 bg-blue-50 mt-1">
+              <span>📅 Đã lưu kho: {diffInDays} ngày</span>
+              <span>(Từ: {start.toLocaleDateString('vi-VN')})</span>
             </div>
           );
         })()}
@@ -384,14 +353,34 @@ const OrdersManagement = () => {
             </span>
           </TabsTrigger>
           <TabsTrigger 
-            value="DELIVERED" 
+            value="WAITING_FOR_RETURN" 
+            className="flex-1 min-w-[140px] py-3 data-[state=active]:bg-orange-100 data-[state=active]:text-orange-900 data-[state=active]:border-orange-400 data-[state=active]:border-2"
+          >
+            <span className="flex flex-col items-center">
+              <span className="text-xl">⏳</span>
+              <span className="text-xs mt-1">Chờ Trả Hàng</span>
+              <span className="text-lg font-bold">{waitingReturnorders.length}</span>
+            </span>
+          </TabsTrigger>
+          <TabsTrigger 
+            value="RETURNING" 
+            className="flex-1 min-w-[140px] py-3 data-[state=active]:bg-teal-100 data-[state=active]:text-teal-900 data-[state=active]:border-teal-400 data-[state=active]:border-2"
+          >
+            <span className="flex flex-col items-center">
+              <span className="text-xl">🚚</span>
+              <span className="text-xs mt-1">Đang Trả Hàng</span>
+              <span className="text-lg font-bold">{returningorders.length}</span>
+            </span>
+          </TabsTrigger>
+          <TabsTrigger 
+            value="RETURNED" 
             className="flex-1 min-w-[140px] py-3 data-[state=active]:bg-green-100 data-[state=active]:text-green-900 data-[state=active]:border-green-400 data-[state=active]:border-2"
-            data-testid="tab-delivered"
+            data-testid="tab-returned"
           >
             <span className="flex flex-col items-center">
               <span className="text-xl">✅</span>
-              <span className="text-xs mt-1">Đã Giao</span>
-              <span className="text-lg font-bold">{deliveredorders.length}</span>
+              <span className="text-xs mt-1">Đã Trả Hàng</span>
+              <span className="text-lg font-bold">{returnedorders.length}</span>
             </span>
           </TabsTrigger>
         </TabsList>
@@ -432,14 +421,38 @@ const OrdersManagement = () => {
           )}
         </TabsContent>
 
-        <TabsContent value="DELIVERED" className="mt-6">
+        <TabsContent value="WAITING_FOR_RETURN" className="mt-6">
           <div className="mb-3 flex items-center gap-2">
-            <Badge className="bg-green-100 text-green-800 border-green-300">✅ Đã Giao</Badge>
-            <span className="text-sm text-gray-600">{deliveredorders.length} thùng đã giao thành công</span>
+            <Badge className="bg-orange-100 text-orange-800 border-orange-300">⏳ Chờ Trả Hàng</Badge>
+            <span className="text-sm text-gray-600">{waitingReturnorders.length} thùng đang chờ trả khách</span>
           </div>
-          {deliveredorders.length === 0 ? renderEmpty('Chưa có thùng nào được giao') : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="orders-list-delivered">
-              {deliveredorders.map(renderorderCard)}
+          {waitingReturnorders.length === 0 ? renderEmpty('Không có thùng nào đang chờ trả') : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {waitingReturnorders.map(renderorderCard)}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="RETURNING" className="mt-6">
+          <div className="mb-3 flex items-center gap-2">
+            <Badge className="bg-teal-100 text-teal-800 border-teal-300">🚚 Đang Trả Hàng</Badge>
+            <span className="text-sm text-gray-600">{returningorders.length} thùng đang được shipper trả</span>
+          </div>
+          {returningorders.length === 0 ? renderEmpty('Không có thùng nào đang trả khách') : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {returningorders.map(renderorderCard)}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="RETURNED" className="mt-6">
+          <div className="mb-3 flex items-center gap-2">
+            <Badge className="bg-green-100 text-green-800 border-green-300">✅ Đã Trả Hàng</Badge>
+            <span className="text-sm text-gray-600">{returnedorders.length} thùng đã trả thành công</span>
+          </div>
+          {returnedorders.length === 0 ? renderEmpty('Chưa có thùng nào được trả') : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="orders-list-returned">
+              {returnedorders.map(renderorderCard)}
             </div>
           )}
         </TabsContent>
@@ -614,16 +627,7 @@ const OrdersManagement = () => {
                           : '🏍️ Shipper giao tận nơi'}
                       </p>
                     </div>
-                    {selectedorder.rental_months && (
-                      <div>
-                        <p className="text-sm font-semibold text-orange-800">Thời hạn thuê:</p>
-                        <p className="text-gray-800 mt-1 font-medium">
-                          {selectedorder.rental_months} tháng
-                          {selectedorder.rental_months >= 6 && <span className="ml-1 text-green-600 text-xs">(Miễn phí ship 2 chiều)</span>}
-                          {selectedorder.rental_months >= 3 && selectedorder.rental_months < 6 && <span className="ml-1 text-green-600 text-xs">(Miễn phí ship chiều gửi)</span>}
-                        </p>
-                      </div>
-                    )}
+
                   </div>
 
                   {selectedorder.shipping_fee_details && (
@@ -652,12 +656,7 @@ const OrdersManagement = () => {
                               <span>-{selectedorder.shipping_fee_details.breakdown.bulk_discount.toLocaleString()} VND/lượt</span>
                             </div>
                           )}
-                          {(selectedorder.shipping_fee_details.breakdown.outbound_discount > 0 || selectedorder.shipping_fee_details.breakdown.return_discount > 0) && (
-                            <div className="flex justify-between text-green-700">
-                              <span>Ưu đãi thuê dài hạn:</span>
-                              <span>-{((selectedorder.shipping_fee_details.breakdown.outbound_discount || 0) + (selectedorder.shipping_fee_details.breakdown.return_discount || 0)).toLocaleString()} VND</span>
-                            </div>
-                          )}
+
                         </>
                       )}
                       <div className="border-t pt-1 mt-1 flex justify-between">
@@ -755,51 +754,7 @@ const OrdersManagement = () => {
           </div>
         </DialogContent>
       </Dialog>
-      {/* Renewal Dialog */}
-      <Dialog open={showRenewDialog} onOpenChange={setShowRenewDialog}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>🔄 Gia hạn đơn hàng</DialogTitle>
-          </DialogHeader>
-          {renewingOrder && (
-            <div className="space-y-4 mt-3">
-              <div className="bg-indigo-50 p-3 rounded-lg">
-                <p className="font-mono font-bold">{renewingOrder.order_id}</p>
-                {renewingOrder.storage_expiry_date && (
-                  <p className="text-sm text-gray-600 mt-1">
-                    Hạn hiện tại: {new Date(renewingOrder.storage_expiry_date).toLocaleDateString('vi-VN')}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Gia hạn thêm (tháng)</label>
-                <div className="flex gap-2">
-                  {[1, 2, 3, 6, 12].map(m => (
-                    <button
-                      key={m}
-                      className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                        renewMonths === m 
-                          ? 'bg-indigo-600 text-white border-indigo-600' 
-                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                      }`}
-                      onClick={() => setRenewMonths(m)}
-                    >
-                      {m} th
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <Button 
-                className="w-full" 
-                onClick={handleRenew} 
-                disabled={renewLoading}
-              >
-                {renewLoading ? 'Đang xử lý...' : `✅ Xác nhận gia hạn ${renewMonths} tháng`}
-              </Button>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Dialogs end */}
     </div>
   );
 };

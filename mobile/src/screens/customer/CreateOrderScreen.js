@@ -58,7 +58,6 @@ export default function CreateOrderScreen({ navigation }) {
   const [distanceKm, setDistanceKm] = useState('3');
   const [floorNumber, setFloorNumber] = useState('0');
   const [hasElevator, setHasElevator] = useState(true);
-  const [rentalMonths, setRentalMonths] = useState('1');
   const [acceptNoProhibited, setAcceptNoProhibited] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -119,7 +118,6 @@ export default function CreateOrderScreen({ navigation }) {
         distance_km: parseFloat(distanceKm) || 3,
         floor_number: parseInt(floorNumber) || 0,
         has_elevator: hasElevator,
-        rental_months: parseInt(rentalMonths) || 1,
         accept_no_prohibited: true,
       };
       const res = await createMyOrder(data);
@@ -286,13 +284,13 @@ export default function CreateOrderScreen({ navigation }) {
             </>
           )}
 
-          <Text style={styles.fieldLabel}>Số tháng thuê</Text>
-          <TextInput
-            style={styles.input}
-            keyboardType="numeric"
-            value={rentalMonths}
-            onChangeText={setRentalMonths}
-          />
+          {/* Discount Note */}
+          <View style={{ backgroundColor: '#f0fdf4', padding: 12, borderRadius: 8, marginTop: 12, borderColor: '#bbf7d0', borderWidth: 1 }}>
+            <Text style={{ fontWeight: 'bold', color: '#166534', marginBottom: 4 }}>🎁 Ưu đãi lưu kho dài hạn:</Text>
+            <Text style={{ fontSize: 12, color: '#166534', marginLeft: 8 }}>• Thuê từ 3 tháng: Miễn phí ship chiều gửi</Text>
+            <Text style={{ fontSize: 12, color: '#166534', marginLeft: 8 }}>• Thuê từ 6 tháng: Miễn phí ship 2 chiều</Text>
+            <Text style={{ fontSize: 11, color: '#15803d', fontStyle: 'italic', marginTop: 4 }}>*Ưu đãi sẽ được áp dụng (hoàn tiền ship) khi quý khách lấy lại hàng.</Text>
+          </View>
         </View>
 
         {/* Confirm */}

@@ -12,7 +12,9 @@ const StatCard = ({ title, value, description, color = 'blue', testId }) => {
     yellow: 'from-yellow-500 to-yellow-600',
     purple: 'from-purple-500 to-purple-600',
     red: 'from-red-500 to-red-600',
-    indigo: 'from-indigo-500 to-indigo-600'
+    indigo: 'from-indigo-500 to-indigo-600',
+    orange: 'from-orange-500 to-orange-600',
+    teal: 'from-teal-500 to-teal-600'
   };
 
   return (
@@ -148,12 +150,14 @@ const AdminDashboard = () => {
 
       <div>
         <h2 className="text-xl font-semibold text-gray-800 mb-4">📦 Thống Kê Thùng Hàng</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard title="Tổng Thùng" value={stats?.orders?.total || 0} color="indigo" testId="stat-total-orders" />
           <StatCard title="Chờ Lấy" value={stats?.orders?.waiting_pickup || 0} color="yellow" testId="stat-waiting-pickup" />
           <StatCard title="Đã Lấy" value={stats?.orders?.picked_up || 0} color="blue" testId="stat-picked-up" />
           <StatCard title="Ở Hub" value={stats?.orders?.in_hub || 0} color="purple" testId="stat-in-hub" />
-          <StatCard title="Đã Giao" value={stats?.orders?.delivered || 0} color="green" testId="stat-delivered" />
+          <StatCard title="Chờ Trả" value={stats?.orders?.waiting_return || 0} color="orange" testId="stat-waiting-return" />
+          <StatCard title="Đang Trả" value={stats?.orders?.returning || 0} color="teal" testId="stat-returning" />
+          <StatCard title="Đã Trả" value={stats?.orders?.returned || 0} color="green" testId="stat-returned" />
         </div>
       </div>
 

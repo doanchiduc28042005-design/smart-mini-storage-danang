@@ -47,7 +47,7 @@ const SHIPPING_MAX_FREE_KM = 5;
 const SHIPPING_STAIR_FEE = 15000;
 const SHIPPING_BULK_FEE = 5000;
 
-const calculateShippingFee = (deliveryMethod, distanceKm, floorNumber, hasElevator, rentalMonths, numBoxes) => {
+const calculateShippingFee = (deliveryMethod, distanceKm, floorNumber, hasElevator, numBoxes) => {
   if (deliveryMethod === 'self_pickup') {
     return {
       outboundFee: 0, returnFee: 0, totalShippingFee: 0,
@@ -87,17 +87,7 @@ const calculateShippingFee = (deliveryMethod, distanceKm, floorNumber, hasElevat
   if (stairFee > 0) notes.push(`Phí bê vác cầu thang bộ (tầng ${floorNumber}): +${stairFee.toLocaleString()} VND`);
   if (bulkDiscount > 0) notes.push(`Giảm giá gom ${numBoxes} thùng: -${bulkDiscount.toLocaleString()} VND/lượt`);
 
-  if (rentalMonths >= 6) {
-    outboundDiscount = outboundFee;
-    returnDiscount = returnFee;
-    outboundFee = 0;
-    returnFee = 0;
-    notes.push(`Thuê ${rentalMonths} tháng: Miễn phí ship CẢ 2 CHIỀU 🎉`);
-  } else if (rentalMonths >= 3) {
-    outboundDiscount = outboundFee;
-    outboundFee = 0;
-    notes.push(`Thuê ${rentalMonths} tháng: Miễn phí ship chiều GỬI 🎁`);
-  }
+
 
   return {
     outboundFee, returnFee,
@@ -120,8 +110,8 @@ const CreateOrderDialog = ({ open, onOpenChange, defaultAddress, onCreated }) =>
     delivery_method: 'standard',
     distance_km: 3,
     floor_number: 0,
+    floor_number: 0,
     has_elevator: true,
-    rental_months: 1,
   });
   const [acceptNoProhibited, setAcceptNoProhibited] = useState(false);
   const [error, setError] = useState('');
@@ -144,7 +134,7 @@ const CreateOrderDialog = ({ open, onOpenChange, defaultAddress, onCreated }) =>
   const resetForm = () => {
     setBoxes([{ id: Date.now(), size: 'M', item_description: '', notes: '' }]);
     setForm({ pickup_date: '', pickup_time: '', pickup_address: '' });
-    setShipping({ delivery_method: 'standard', distance_km: 3, floor_number: 0, has_elevator: true, rental_months: 1 });
+    setShipping({ delivery_method: 'standard', distance_km: 3, floor_number: 0, has_elevator: true });
     setAcceptNoProhibited(false);
     setError('');
     setSuccessData(null);
@@ -187,7 +177,6 @@ const CreateOrderDialog = ({ open, onOpenChange, defaultAddress, onCreated }) =>
       shipping.distance_km,
       shipping.floor_number,
       shipping.has_elevator,
-      shipping.rental_months,
       boxes.length
     );
   }, [shipping, boxes.length]);
@@ -230,7 +219,6 @@ const CreateOrderDialog = ({ open, onOpenChange, defaultAddress, onCreated }) =>
         distance_km: parseFloat(shipping.distance_km) || 3,
         floor_number: parseInt(shipping.floor_number) || 0,
         has_elevator: shipping.has_elevator,
-        rental_months: parseInt(shipping.rental_months) || 1,
       };
 
       const { data } = await createMyOrder(payload);
@@ -521,30 +509,14 @@ const CreateOrderDialog = ({ open, onOpenChange, defaultAddress, onCreated }) =>
                 </div>
               )}
 
-              {/* Rental duration */}
-              <div className="space-y-1">
-                <Label className="text-sm text-gray-700">📅 Thời hạn thuê dự kiến</Label>
-                <Select
-                  value={String(shipping.rental_months)}
-                  onValueChange={(val) => setShipping({ ...shipping, rental_months: parseInt(val) })}
-                >
-                  <SelectTrigger className="bg-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">1 tháng</SelectItem>
-                    <SelectItem value="2">2 tháng</SelectItem>
-                    <SelectItem value="3">3 tháng ⭐ Miễn phí ship chiều gửi</SelectItem>
-                    <SelectItem value="6">6 tháng 🎉 Miễn phí ship 2 chiều</SelectItem>
-                    <SelectItem value="12">12 tháng 🎉 Miễn phí ship 2 chiều</SelectItem>
-                  </SelectContent>
-                </Select>
-                {shipping.rental_months >= 3 && shipping.rental_months < 6 && (
-                  <p className="text-xs text-green-600 font-medium mt-1">🎁 Ưu đãi: Miễn phí ship chiều gửi (lượt 1)</p>
-                )}
-                {shipping.rental_months >= 6 && (
-                  <p className="text-xs text-green-600 font-medium mt-1">🎉 Ưu đãi: Miễn phí ship CẢ 2 CHIỀU!</p>
-                )}
+              {/* Storage discount note */}
+              <div className="bg-green-50 border border-green-200 p-3 rounded-md text-sm text-green-800">
+                <strong>🎁 Ưu đãi lưu kho dài hạn:</strong>
+                <ul className="list-disc pl-5 mt-1 text-xs">
+                  <li>Lưu kho từ <strong>3 tháng trở lên</strong>: Miễn phí ship chiều gửi.</li>
+                  <li>Lưu kho từ <strong>6 tháng trở lên</strong>: Miễn phí ship CẢ 2 CHIỀU.</li>
+                </ul>
+                <p className="text-xs mt-1 text-gray-500 italic">*Ưu đãi sẽ được áp dụng (hoàn tiền ship) khi quý khách lấy lại hàng.</p>
               </div>
             </div>
 
@@ -568,20 +540,14 @@ const CreateOrderDialog = ({ open, onOpenChange, defaultAddress, onCreated }) =>
               <div className="bg-white/70 rounded-md p-3 space-y-1 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">🚚 Ship lượt GỬI (thùng rỗng → nhận hàng → về kho):</span>
-                  <span className={`font-medium ${shippingCost.outboundFee === 0 && shipping.delivery_method === 'standard' && shipping.rental_months >= 3 ? 'text-green-600' : ''}`}>
-                    {shippingCost.outboundFee === 0 && shipping.delivery_method === 'standard' && shipping.rental_months >= 3
-                      ? 'Miễn phí ✓'
-                      : `${shippingCost.outboundFee.toLocaleString()} VND`
-                    }
+                  <span className="font-medium">
+                    {shippingCost.outboundFee.toLocaleString()} VND
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">🚚 Ship lượt TRẢ (kho → giao tận cửa):</span>
-                  <span className={`font-medium ${shippingCost.returnFee === 0 && shipping.delivery_method === 'standard' && shipping.rental_months >= 6 ? 'text-green-600' : ''}`}>
-                    {shippingCost.returnFee === 0 && shipping.delivery_method === 'standard' && shipping.rental_months >= 6
-                      ? 'Miễn phí ✓'
-                      : `${shippingCost.returnFee.toLocaleString()} VND`
-                    }
+                  <span className="font-medium">
+                    {shippingCost.returnFee.toLocaleString()} VND
                   </span>
                 </div>
                 {shippingCost.distanceSurcharge > 0 && (

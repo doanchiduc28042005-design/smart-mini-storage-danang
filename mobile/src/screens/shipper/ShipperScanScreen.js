@@ -8,7 +8,9 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 const STATUS_OPTIONS = [
   { value: 'PICKED_UP', label: '🚚 Đã Lấy Hàng' },
   { value: 'IN_HUB', label: '🏢 Đã Về Hub/Kho' },
-  { value: 'DELIVERED', label: '✅ Đã Giao Cho Khách' },
+  { value: 'WAITING_FOR_RETURN', label: '⏳ Đã Nhập Hub, Chờ Trả Khách' },
+      { value: 'RETURNING', label: '🚚 Đang Đi Trả Khách' },
+      { value: 'RETURNED', label: '✅ Đã Giao Cho Khách' },
 ];
 
 export default function ShipperScanScreen() {

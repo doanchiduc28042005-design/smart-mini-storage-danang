@@ -2,13 +2,15 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, RefreshControl, StyleSheet, ActivityIndicator, Alert, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { getMyOrders, renewOrder } from '../../services/api';
+import { getMyOrders } from '../../services/api';
 
 const statusLabels = {
   'WAITING_FOR_PICKUP': { label: '⏳ Chờ Lấy', color: '#f59e0b', bg: '#fef3c7' },
   'PICKED_UP': { label: '🚚 Đã Lấy', color: '#3b82f6', bg: '#dbeafe' },
   'IN_HUB': { label: '🏢 Ở Hub', color: '#8b5cf6', bg: '#ede9fe' },
-  'DELIVERED': { label: '✅ Đã Giao', color: '#10b981', bg: '#d1fae5' },
+  'WAITING_FOR_RETURN': { label: '⏳ Chờ Trả Hàng', color: '#c2410c', bg: '#ffedd5' },
+  'RETURNING': { label: '🚚 Đang Trả', color: '#0f766e', bg: '#ccfbf1' },
+  'RETURNED': { label: '✅ Đã Trả', color: '#10b981', bg: '#d1fae5' },
 };
 
 export default function CustomerOrdersScreen({ navigation }) {
@@ -17,9 +19,6 @@ export default function CustomerOrdersScreen({ navigation }) {
   const [activeTab, setActiveTab] = useState('active'); // 'active' | 'completed'
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [renewingOrder, setRenewingOrder] = useState(null);
-  const [renewMonths, setRenewMonths] = useState(1);
-  const [renewLoading, setRenewLoading] = useState(false);
 
   const loadOrders = useCallback(async () => {
     try {
@@ -32,21 +31,6 @@ export default function CustomerOrdersScreen({ navigation }) {
       setRefreshing(false);
     }
   }, []);
-
-  const handleRenew = async () => {
-    if (!renewingOrder) return;
-    setRenewLoading(true);
-    try {
-      await renewOrder(renewingOrder.order_id, { months: renewMonths });
-      Alert.alert('Thành công', `Đã gia hạn thêm ${renewMonths} tháng cho đơn ${renewingOrder.order_id}!`);
-      setRenewingOrder(null);
-      loadOrders();
-    } catch (e) {
-      Alert.alert('Lỗi', e.response?.data?.detail || 'Lỗi khi gia hạn');
-    } finally {
-      setRenewLoading(false);
-    }
-  };
 
   useFocusEffect(
     useCallback(() => {
@@ -64,8 +48,8 @@ export default function CustomerOrdersScreen({ navigation }) {
     return false;
   });
 
-  const activeOrders = filtered.filter(o => o.status !== 'DELIVERED');
-  const completedOrders = filtered.filter(o => o.status === 'DELIVERED');
+  const activeOrders = filtered.filter(o => o.status !== 'RETURNED');
+  const completedOrders = filtered.filter(o => o.status === 'RETURNED');
   const displayOrders = activeTab === 'active' ? activeOrders : completedOrders;
 
   if (loading) {
@@ -142,21 +126,6 @@ export default function CustomerOrdersScreen({ navigation }) {
                   </View>
                 </View>
 
-                {order.status === 'IN_HUB' && order.storage_expiry_date && (
-                  <View style={styles.expiryRow}>
-                    <Text style={styles.expiryText}>Hạn: {new Date(order.storage_expiry_date).toLocaleDateString('vi-VN')}</Text>
-                    <TouchableOpacity 
-                      style={styles.renewBtn}
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        setRenewingOrder(order);
-                        setRenewMonths(1);
-                      }}
-                    >
-                      <Text style={styles.renewBtnText}>🔄 Gia hạn</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
 
                 {order.items && order.items.length > 0 && (
                   <Text style={styles.orderItems} numberOfLines={2}>
@@ -182,46 +151,6 @@ export default function CustomerOrdersScreen({ navigation }) {
         <View style={{ height: 20 }} />
       </ScrollView>
 
-      {/* RENEW MODAL */}
-      <Modal visible={!!renewingOrder} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>🔄 Gia hạn đơn hàng</Text>
-            {renewingOrder && (
-              <>
-                <Text style={styles.modalSub}>Mã đơn: <Text style={{fontWeight:'bold'}}>{renewingOrder.order_id}</Text></Text>
-                <Text style={styles.modalSub}>Hạn hiện tại: {new Date(renewingOrder.storage_expiry_date).toLocaleDateString('vi-VN')}</Text>
-                
-                <Text style={styles.label}>Gia hạn thêm (tháng):</Text>
-                <View style={styles.monthOptions}>
-                  {[1, 2, 3, 6, 12].map(m => (
-                    <TouchableOpacity 
-                      key={m} 
-                      style={[styles.monthBtn, renewMonths === m && styles.monthBtnActive]}
-                      onPress={() => setRenewMonths(m)}
-                    >
-                      <Text style={[styles.monthBtnText, renewMonths === m && styles.monthBtnTextActive]}>{m} th</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-
-                <View style={styles.modalActions}>
-                  <TouchableOpacity style={styles.cancelBtn} onPress={() => setRenewingOrder(null)}>
-                    <Text style={styles.cancelBtnText}>Hủy</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.submitBtn, renewLoading && {opacity: 0.7}]} 
-                    onPress={handleRenew} 
-                    disabled={renewLoading}
-                  >
-                    {renewLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Xác nhận</Text>}
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -262,16 +191,6 @@ const styles = StyleSheet.create({
   orderAddress: { fontSize: 12, color: '#6b7280', marginTop: 6 },
   orderShipping: { fontSize: 12, color: '#4f46e5', fontWeight: '500', marginTop: 4 },
   orderDate: { fontSize: 11, color: '#9ca3af', marginTop: 6 },
-  expiryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, padding: 8, backgroundColor: '#f0fdf4', borderRadius: 8 },
-  expiryText: { fontSize: 12, color: '#166534', fontWeight: '500' },
-  renewBtn: { backgroundColor: '#4f46e5', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
-  renewBtnText: { color: '#ffffff', fontSize: 12, fontWeight: 'bold' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  modalContent: { backgroundColor: '#ffffff', borderRadius: 16, padding: 20, width: '100%' },
-  modalTitle: { fontSize: 18, fontWeight: 'bold', color: '#111827', marginBottom: 12 },
-  modalSub: { fontSize: 14, color: '#4b5563', marginBottom: 4 },
-  label: { fontSize: 14, fontWeight: '600', color: '#374151', marginTop: 12, marginBottom: 8 },
-  monthOptions: { flexDirection: 'row', gap: 8, marginBottom: 20, flexWrap: 'wrap' },
   monthBtn: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: '#d1d5db' },
   monthBtnActive: { backgroundColor: '#4f46e5', borderColor: '#4f46e5' },
   monthBtnText: { fontSize: 14, color: '#374151' },
