@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getShippers, approveShipper, rejectShipper } from '@/services/api';
+import { getShippers, getShipper, approveShipper, rejectShipper } from '@/services/api';
 import { sendShipperApprovalEmail, sendShipperRejectionEmail } from '@/services/emailService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,6 +28,17 @@ const ShippersManagement = () => {
       setShippers(response.data);
     } catch (error) {
       console.error('Error loading shippers:', error);
+    }
+  };
+
+  const handleOpenReview = async (shipper) => {
+    try {
+      setSelectedShipper(shipper); // Temporary set to open dialog quickly
+      setShowReview(true);
+      const res = await getShipper(shipper.id);
+      setSelectedShipper(res.data);
+    } catch (error) {
+      console.error('Error loading shipper details:', error);
     }
   };
 
@@ -180,18 +191,12 @@ const ShippersManagement = () => {
                 )}
               </div>
               <div className="mt-4 flex gap-2">
-                <Button variant="outline" className="w-full" onClick={() => {
-                  setSelectedShipper(shipper);
-                  setShowReview(true);
-                }}>
+                <Button variant="outline" className="w-full" onClick={() => handleOpenReview(shipper)}>
                   Chi Tiết
                 </Button>
                 {shipper.registration_status === 'pending' && (
                   <>
-                    <Button className="w-full bg-blue-600 hover:bg-blue-700" onClick={() => {
-                      setSelectedShipper(shipper);
-                      setShowReview(true);
-                    }}>
+                    <Button className="w-full bg-blue-600 hover:bg-blue-700" onClick={() => handleOpenReview(shipper)}>
                       Duyệt
                     </Button>
                     <Button variant="destructive" className="w-full" onClick={() => {

@@ -35,7 +35,7 @@ const CustomerDashboard = React.lazy(() => import("@/pages/CustomerDashboard"));
 const TermsPage = React.lazy(() => import("@/pages/TermsPage"));
 const AIChatbot = React.lazy(() => import("@/components/AIChatbot"));
 
-const GlobalChatbot = () => {
+const GlobalWidgets = () => {
   const location = useLocation();
   const { user } = useAuth();
   const [isInactive, setIsInactive] = React.useState(false);
@@ -72,9 +72,24 @@ const GlobalChatbot = () => {
   if (isInactive) return null;
   
   return (
-    <Suspense fallback={null}>
-      <AIChatbot />
-    </Suspense>
+    <>
+      {/* Facebook Messenger Bubble */}
+      <a 
+        href="https://www.facebook.com/profile.php?id=61591673590432" 
+        target="_blank" 
+        rel="noopener noreferrer"
+        className="fixed bottom-[100px] right-6 z-50 bg-[#1877F2] text-white rounded-full p-4 shadow-xl hover:shadow-2xl hover:scale-110 transition-all duration-300 flex items-center justify-center"
+        title="Chat với chúng tôi qua Facebook"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M13.397 20.997v-8.196h2.765l.411-3.209h-3.176V7.548c0-.926.258-1.56 1.587-1.56h1.684V3.127A22.336 22.336 0 0 0 14.201 3c-2.444 0-4.122 1.492-4.122 4.231v2.355H7.332v3.209h2.753v8.202h3.312z"></path>
+        </svg>
+      </a>
+
+      <Suspense fallback={null}>
+        <AIChatbot />
+      </Suspense>
+    </>
   );
 };
 
@@ -193,7 +208,7 @@ function App() {
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>
-          <GlobalChatbot />
+          <GlobalWidgets />
         </AuthProvider>
       </BrowserRouter>
     </div>

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, RefreshControl, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, RefreshControl, StyleSheet, ActivityIndicator, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { getMyOrders, getNotifications } from '../../services/api';
+import { FontAwesome5 } from '@expo/vector-icons';
 
 const statusLabels = {
   'WAITING_FOR_PICKUP': { label: '⏳ Chờ Lấy', color: '#f59e0b', bg: '#fef3c7' },
@@ -188,6 +189,14 @@ export default function CustomerHomeScreen({ navigation }) {
 
         <View style={{ height: 20 }} />
       </ScrollView>
+
+      {/* Facebook Chat FAB */}
+      <TouchableOpacity 
+        style={[styles.fab, { bottom: 90, backgroundColor: '#1877F2' }]} 
+        onPress={() => Linking.openURL('https://www.facebook.com/profile.php?id=61591673590432')}
+      >
+        <FontAwesome5 name="facebook-f" size={24} color="#ffffff" />
+      </TouchableOpacity>
 
       {/* AI Chatbot FAB */}
       <TouchableOpacity 

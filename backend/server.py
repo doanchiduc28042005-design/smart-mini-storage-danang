@@ -1027,12 +1027,13 @@ async def login_shipper(input: ShipperLogin):
 
 @api_router.get("/shippers", response_model=List[Shipper])
 async def get_shippers():
-    shippers = await db.shippers.find({}, {"_id": 0}).to_list(1000)
+    shippers = await db.shippers.find({}, {"_id": 0, "license_photo": 0}).to_list(1000)
     
     for shipper in shippers:
         if isinstance(shipper.get('created_at'), str):
             shipper['created_at'] = datetime.fromisoformat(shipper['created_at'])
         shipper['has_password'] = bool(shipper.get('password_hash'))
+        shipper['license_photo'] = "" # To avoid missing field issues
     
     return shippers
 
