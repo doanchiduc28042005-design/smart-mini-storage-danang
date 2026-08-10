@@ -17,6 +17,7 @@ export default function RegisterScreen({ navigation }) {
     license_photo: null, // shipper only
   });
   const [loading, setLoading] = useState(false);
+  const [acceptTerms, setAcceptTerms] = useState(false);
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -39,6 +40,10 @@ export default function RegisterScreen({ navigation }) {
   };
 
   const handleRegister = async () => {
+    if (!acceptTerms) {
+      Alert.alert('Lỗi', 'Vui lòng đọc và đồng ý với Điều Khoản Dịch Vụ');
+      return;
+    }
     // Chung
     if (!form.name || !form.phone || (tab === 'shipper' && !form.email)) {
       Alert.alert('Lỗi', 'Vui lòng điền đầy đủ các trường bắt buộc (*)');
@@ -67,9 +72,11 @@ export default function RegisterScreen({ navigation }) {
         await registerCustomerApi({
           name: form.name,
           phone: form.phone,
-          email: form.email,
+          email: form.email || `customer${Date.now()}@test.com`,
           address: form.address,
-          password: form.password
+          password: form.password,
+          default_pickup_address: form.address || '',
+          accept_terms: acceptTerms
         });
         
         Alert.alert('Thành công', 'Đăng ký tài khoản Khách hàng thành công! Vui lòng đăng nhập.', [
@@ -131,6 +138,8 @@ export default function RegisterScreen({ navigation }) {
               placeholderTextColor="#9ca3af"
               value={form.name}
               onChangeText={(text) => setForm({...form, name: text})}
+              autoCorrect={false}
+              spellCheck={false}
             />
           </View>
 
@@ -143,6 +152,8 @@ export default function RegisterScreen({ navigation }) {
               keyboardType="phone-pad"
               value={form.phone}
               onChangeText={(text) => setForm({...form, phone: text})}
+              autoCorrect={false}
+              spellCheck={false}
             />
           </View>
           
@@ -156,6 +167,8 @@ export default function RegisterScreen({ navigation }) {
               autoCapitalize="none"
               value={form.email}
               onChangeText={(text) => setForm({...form, email: text})}
+              autoCorrect={false}
+              spellCheck={false}
             />
           </View>
 
@@ -170,6 +183,8 @@ export default function RegisterScreen({ navigation }) {
                   placeholderTextColor="#9ca3af"
                   value={form.address}
                   onChangeText={(text) => setForm({...form, address: text})}
+                  autoCorrect={false}
+                  spellCheck={false}
                 />
               </View>
 
@@ -228,6 +243,24 @@ export default function RegisterScreen({ navigation }) {
               <Text style={styles.shipperNote}>* Shipper sau khi được duyệt sẽ nhận được Email hướng dẫn tạo mật khẩu.</Text>
             </>
           )}
+
+          <View style={styles.termsContainer}>
+            <TouchableOpacity 
+              style={styles.checkboxContainer} 
+              onPress={() => setAcceptTerms(!acceptTerms)}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.checkbox, acceptTerms && styles.checkboxChecked]}>
+                {acceptTerms && <Text style={styles.checkmark}>✓</Text>}
+              </View>
+              <Text style={styles.termsText}>
+                Tôi đã đọc và đồng ý với{' '}
+                <Text style={styles.termsLink} onPress={() => navigation.navigate('Terms')}>
+                  Điều Khoản Dịch Vụ
+                </Text>
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           <TouchableOpacity 
             style={styles.submitButton}
@@ -363,5 +396,44 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: 'bold',
     fontSize: 17,
+  },
+  termsContainer: {
+    marginVertical: 12,
+    paddingHorizontal: 10,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderWidth: 2,
+    borderColor: '#94a3b8',
+    borderRadius: 6,
+    marginRight: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  checkboxChecked: {
+    backgroundColor: '#4f46e5',
+    borderColor: '#4f46e5',
+  },
+  checkmark: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  termsText: {
+    fontSize: 13,
+    color: '#64748b',
+    flex: 1,
+    lineHeight: 20,
+  },
+  termsLink: {
+    color: '#4f46e5',
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
 });

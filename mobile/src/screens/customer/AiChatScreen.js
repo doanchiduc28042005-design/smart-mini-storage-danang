@@ -10,11 +10,13 @@ export default function AiChatScreen({ navigation }) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const scrollViewRef = useRef(null);
+  const inputRef = useRef(null);
 
   const sendMessage = async () => {
     if (!input.trim()) return;
     const userText = input.trim();
     setInput('');
+    inputRef.current?.clear();
     
     const newUserMsg = { id: Date.now().toString(), role: 'user', text: userText };
     const updatedMessages = [...messages, newUserMsg];
@@ -84,13 +86,16 @@ export default function AiChatScreen({ navigation }) {
 
         <View style={styles.inputArea}>
           <TextInput
+            ref={inputRef}
             style={styles.input}
             placeholder="Nhập câu hỏi của bạn..."
             placeholderTextColor="#9ca3af"
-            value={input}
+            value={Platform.OS === 'ios' ? input : undefined}
             onChangeText={setInput}
             onSubmitEditing={sendMessage}
             returnKeyType="send"
+            autoCorrect={false}
+            spellCheck={false}
           />
           <TouchableOpacity 
             style={[styles.sendBtn, !input.trim() && styles.sendBtnDisabled]} 

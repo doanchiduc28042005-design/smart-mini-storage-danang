@@ -373,6 +373,7 @@ class Order(BaseModel):
     pickup_time: Optional[str] = None  # ISO datetime string
     items: List[BoxOrderItem] = Field(default_factory=list)
     created_by: str = "admin"  # 'admin' or 'customer'
+    duration_days: int = 30
     storage_expiry_date: Optional[str] = None  # ISO datetime string
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     last_updated: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -389,6 +390,7 @@ class CustomerOrderCreate(BaseModel):
     pickup_time: str  # ISO datetime string
     pickup_address: Optional[str] = None  # Fallback to customer default
     accept_no_prohibited: bool
+    duration_days: int = 30
     # Shipping options
     delivery_method: str = "standard"  # 'standard' or 'self_pickup'
     distance_km: float = 3.0  # Distance from nearest station in km
@@ -745,6 +747,7 @@ async def customer_create_order(data: CustomerOrderCreate, current_user: dict = 
         "pickup_time": data.pickup_time,
         "items": order_items,
         "created_by": "customer",
+        "duration_days": data.duration_days,
         "created_at": now.isoformat(),
         "last_updated": now.isoformat(),
         "last_latitude": None,
@@ -1226,6 +1229,12 @@ async def process_qr_scan(data: QRScanRequest):
     if data.latitude is not None and data.longitude is not None:
         update_fields["last_latitude"] = data.latitude
         update_fields["last_longitude"] = data.longitude
+        
+    if data.status == "IN_HUB" and previous_status != "IN_HUB":
+        duration_days = order.get("duration_days", 30)
+        # Calculate expiry date: now + duration_days
+        expiry_date = now + timedelta(days=duration_days)
+        update_fields["storage_expiry_date"] = expiry_date.isoformat()
     
     await db.orders.update_one(
         {"order_id": data.order_id},

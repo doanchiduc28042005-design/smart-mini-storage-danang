@@ -105,6 +105,8 @@ export default function LoginScreen({ navigation }) {
               value={phone}
               onChangeText={setPhone}
               autoCapitalize="none"
+              autoCorrect={false}
+              spellCheck={false}
             />
           </View>
           

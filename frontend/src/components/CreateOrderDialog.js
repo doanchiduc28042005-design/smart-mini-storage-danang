@@ -118,6 +118,9 @@ const CreateOrderDialog = ({ open, onOpenChange, defaultAddress, onCreated }) =>
   const [submitting, setSubmitting] = useState(false);
   const [successData, setSuccessData] = useState(null);
   const [inventoryMap, setInventoryMap] = useState({});
+  const [durationDays, setDurationDays] = useState(30);
+  const [isCustomDuration, setIsCustomDuration] = useState(false);
+  const [customUnit, setCustomUnit] = useState('days');
 
   useEffect(() => {
     if (open) {
@@ -138,6 +141,9 @@ const CreateOrderDialog = ({ open, onOpenChange, defaultAddress, onCreated }) =>
     setAcceptNoProhibited(false);
     setError('');
     setSuccessData(null);
+    setDurationDays(30);
+    setIsCustomDuration(false);
+    setCustomUnit('days');
   };
 
   const handleClose = () => {
@@ -219,6 +225,9 @@ const CreateOrderDialog = ({ open, onOpenChange, defaultAddress, onCreated }) =>
         distance_km: parseFloat(shipping.distance_km) || 3,
         floor_number: parseInt(shipping.floor_number) || 0,
         has_elevator: shipping.has_elevator,
+        duration_days: isCustomDuration 
+          ? (parseInt(durationDays) * (customUnit === 'months' ? 30 : 1)) || 30
+          : parseInt(durationDays) || 30,
       };
 
       const { data } = await createMyOrder(payload);
@@ -378,6 +387,69 @@ const CreateOrderDialog = ({ open, onOpenChange, defaultAddress, onCreated }) =>
                 {defaultAddress && (
                   <p className="text-xs text-gray-500 mt-1">💡 Để trống sẽ dùng địa chỉ mặc định: {defaultAddress}</p>
                 )}
+              </div>
+            </div>
+
+            <hr className="my-2 border-gray-200" />
+
+            {/* === DURATION === */}
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 space-y-4">
+              <h3 className="font-semibold text-yellow-900 flex items-center gap-2">
+                ⏳ Thời gian gửi hàng
+              </h3>
+              <div className="space-y-2">
+                <Label className="text-sm text-gray-700">Chọn thời gian bạn muốn gửi hàng (có thể gia hạn sau):</Label>
+                <div className="flex gap-2">
+                  <select 
+                    className="flex-1 p-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    value={isCustomDuration ? "custom" : durationDays}
+                    onChange={(e) => {
+                      if (e.target.value === "custom") {
+                        setIsCustomDuration(true);
+                        setDurationDays('');
+                        setCustomUnit('days');
+                      } else {
+                        setIsCustomDuration(false);
+                        setDurationDays(parseInt(e.target.value));
+                      }
+                    }}
+                  >
+                    <option value={1}>1 ngày</option>
+                    <option value={2}>2 ngày</option>
+                    <option value={3}>3 ngày</option>
+                    <option value={4}>4 ngày</option>
+                    <option value={5}>5 ngày</option>
+                    <option value={6}>6 ngày</option>
+                    <option value={7}>7 ngày</option>
+                    <option value={30}>1 tháng</option>
+                    <option value={60}>2 tháng</option>
+                    <option value={90}>3 tháng</option>
+                    <option value={120}>4 tháng</option>
+                    <option value={150}>5 tháng</option>
+                    <option value={180}>6 tháng</option>
+                    <option value="custom">Tùy chọn...</option>
+                  </select>
+                  {isCustomDuration && (
+                    <>
+                      <input 
+                        type="number" 
+                        min="1"
+                        className="w-20 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="Số"
+                        value={durationDays}
+                        onChange={(e) => setDurationDays(e.target.value)}
+                      />
+                      <select
+                        className="w-24 p-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        value={customUnit}
+                        onChange={(e) => setCustomUnit(e.target.value)}
+                      >
+                        <option value="days">ngày</option>
+                        <option value="months">tháng</option>
+                      </select>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
 

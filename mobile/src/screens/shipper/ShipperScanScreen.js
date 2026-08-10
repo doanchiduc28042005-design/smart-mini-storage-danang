@@ -21,6 +21,7 @@ export default function ShipperScanScreen() {
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const notesRef = useRef(null);
   
   // Camera states
   const [permission, requestPermission] = useCameraPermissions();
@@ -87,6 +88,7 @@ export default function ShipperScanScreen() {
       setOrderId('');
       setStatus('');
       setNotes('');
+      notesRef.current?.clear();
     } catch (e) {
       const msg = e.response?.data?.detail || 'Lỗi cập nhật trạng thái';
       Alert.alert('Lỗi', typeof msg === 'string' ? msg : JSON.stringify(msg));
@@ -113,6 +115,8 @@ export default function ShipperScanScreen() {
               value={orderId}
               onChangeText={setOrderId}
               autoCapitalize="characters"
+              autoCorrect={false}
+              spellCheck={false}
             />
             <TouchableOpacity style={styles.lookupBtn} onPress={() => handleLookup()} disabled={loading}>
               {loading ? <ActivityIndicator color="#fff" size="small" /> : (
@@ -181,12 +185,15 @@ export default function ShipperScanScreen() {
 
               <Text style={styles.fieldLabel}>Ghi chú (tùy chọn)</Text>
               <TextInput
+                ref={notesRef}
                 style={[styles.input, { minHeight: 60 }]}
                 placeholder="Ghi chú thêm..."
                 placeholderTextColor="#9ca3af"
-                value={notes}
+                value={Platform.OS === 'ios' ? notes : undefined}
                 onChangeText={setNotes}
                 multiline
+                autoCorrect={false}
+                spellCheck={false}
               />
 
               <TouchableOpacity

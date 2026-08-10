@@ -74,6 +74,8 @@ export default function CustomerOrdersScreen({ navigation }) {
           placeholderTextColor="#9ca3af"
           value={searchQuery}
           onChangeText={setSearchQuery}
+          autoCorrect={false}
+          spellCheck={false}
         />
       </View>
 

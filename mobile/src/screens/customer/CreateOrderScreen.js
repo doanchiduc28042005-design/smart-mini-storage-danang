@@ -60,6 +60,10 @@ export default function CreateOrderScreen({ navigation }) {
   const [hasElevator, setHasElevator] = useState(true);
   const [acceptNoProhibited, setAcceptNoProhibited] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [durationDays, setDurationDays] = useState(30);
+  const [isCustomDuration, setIsCustomDuration] = useState(false);
+  const [customDurationText, setCustomDurationText] = useState('');
+  const [customUnit, setCustomUnit] = useState('days');
 
   const addBox = () => {
     setBoxes([...boxes, { size: 'M', item_description: SUGGESTED_DESCS['M'], notes: '' }]);
@@ -119,6 +123,9 @@ export default function CreateOrderScreen({ navigation }) {
         floor_number: parseInt(floorNumber) || 0,
         has_elevator: hasElevator,
         accept_no_prohibited: true,
+        duration_days: isCustomDuration 
+          ? (parseInt(customDurationText) || 1) * (customUnit === 'months' ? 30 : 1)
+          : durationDays,
       };
       const res = await createMyOrder(data);
       Alert.alert('Thành công! 🎉', res.data.message || 'Đã tạo đơn hàng', [
@@ -182,6 +189,8 @@ export default function CreateOrderScreen({ navigation }) {
                 placeholderTextColor="#9ca3af"
                 value={box.item_description}
                 onChangeText={(v) => updateBox(index, 'item_description', v)}
+                autoCorrect={false}
+                spellCheck={false}
               />
 
               <Text style={styles.fieldLabel}>Ghi chú (tùy chọn)</Text>
@@ -191,6 +200,8 @@ export default function CreateOrderScreen({ navigation }) {
                 placeholderTextColor="#9ca3af"
                 value={box.notes}
                 onChangeText={(v) => updateBox(index, 'notes', v)}
+                autoCorrect={false}
+                spellCheck={false}
               />
             </View>
           ))}
@@ -210,6 +221,8 @@ export default function CreateOrderScreen({ navigation }) {
             placeholderTextColor="#9ca3af"
             value={pickupAddress}
             onChangeText={setPickupAddress}
+            autoCorrect={false}
+            spellCheck={false}
           />
 
           <Text style={styles.fieldLabel}>Thời gian lấy hàng *</Text>
@@ -231,6 +244,74 @@ export default function CreateOrderScreen({ navigation }) {
               onChange={onDateChange}
               minimumDate={new Date()}
             />
+          )}
+        </View>
+
+        {/* Duration Options */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Thời gian gửi hàng</Text>
+          <Text style={{ fontSize: 13, color: '#6b7280', marginBottom: 10 }}>Bạn có thể gia hạn thêm sau khi hết hạn</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.durationRow}>
+            {[1, 2, 3, 4, 5, 6, 7].map((d) => (
+              <TouchableOpacity
+                key={`d${d}`}
+                style={[styles.durationChip, durationDays === d && !isCustomDuration && styles.durationChipActive]}
+                onPress={() => {
+                  setIsCustomDuration(false);
+                  setDurationDays(d);
+                }}
+              >
+                <Text style={[styles.durationChipText, durationDays === d && !isCustomDuration && styles.durationChipTextActive]}>
+                  {d} ngày
+                </Text>
+              </TouchableOpacity>
+            ))}
+            {[1, 2, 3, 4, 5, 6].map((m) => (
+              <TouchableOpacity
+                key={`m${m}`}
+                style={[styles.durationChip, durationDays === m * 30 && !isCustomDuration && styles.durationChipActive]}
+                onPress={() => {
+                  setIsCustomDuration(false);
+                  setDurationDays(m * 30);
+                }}
+              >
+                <Text style={[styles.durationChipText, durationDays === m * 30 && !isCustomDuration && styles.durationChipTextActive]}>
+                  {m} tháng
+                </Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              style={[styles.durationChip, isCustomDuration && styles.durationChipActive]}
+              onPress={() => setIsCustomDuration(true)}
+            >
+              <Text style={[styles.durationChipText, isCustomDuration && styles.durationChipTextActive]}>
+                Tuỳ chọn
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
+          {isCustomDuration && (
+            <View style={{ marginTop: 15, flexDirection: 'row', gap: 10 }}>
+              <TextInput
+                style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                placeholder="Nhập số..."
+                placeholderTextColor="#9ca3af"
+                keyboardType="numeric"
+                value={customDurationText}
+                onChangeText={setCustomDurationText}
+              />
+              <TouchableOpacity
+                style={[styles.unitBtn, customUnit === 'days' && styles.unitBtnActive]}
+                onPress={() => setCustomUnit('days')}
+              >
+                <Text style={[styles.unitBtnText, customUnit === 'days' && styles.unitBtnTextActive]}>Ngày</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.unitBtn, customUnit === 'months' && styles.unitBtnActive]}
+                onPress={() => setCustomUnit('months')}
+              >
+                <Text style={[styles.unitBtnText, customUnit === 'months' && styles.unitBtnTextActive]}>Tháng</Text>
+              </TouchableOpacity>
+            </View>
           )}
         </View>
 
@@ -325,6 +406,59 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
   headerBar: { paddingHorizontal: 20, paddingVertical: 12 },
   backBtn: { color: '#4f46e5', fontWeight: '600', fontSize: 15, marginBottom: 8 },
+  errorText: {
+    color: '#ef4444',
+    fontSize: 14,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  durationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 5,
+  },
+  durationChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 20,
+    marginRight: 10,
+  },
+  durationChipActive: {
+    backgroundColor: '#4f46e5',
+    borderColor: '#4f46e5',
+  },
+  durationChipText: {
+    fontSize: 15,
+    color: '#4b5563',
+    fontWeight: '500',
+  },
+  durationChipTextActive: {
+    color: '#fff',
+  },
+  unitBtn: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    backgroundColor: '#fff',
+  },
+  unitBtnActive: {
+    borderColor: '#4f46e5',
+    backgroundColor: '#4f46e5',
+  },
+  unitBtnText: {
+    fontSize: 14,
+    color: '#4b5563',
+  },
+  unitBtnTextActive: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
   headerTitle: { fontSize: 22, fontWeight: 'bold', color: '#111827' },
   scroll: { flex: 1 },
   section: { marginHorizontal: 20, marginTop: 16, backgroundColor: '#fff', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#f3f4f6' },

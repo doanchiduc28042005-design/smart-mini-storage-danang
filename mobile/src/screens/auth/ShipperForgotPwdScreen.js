@@ -100,6 +100,8 @@ export default function ShipperForgotPwdScreen({ navigation }) {
                 autoCapitalize="none"
                 value={email}
                 onChangeText={setEmail}
+                autoCorrect={false}
+                spellCheck={false}
               />
             </View>
 
