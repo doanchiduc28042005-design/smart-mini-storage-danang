@@ -73,8 +73,23 @@ export default function CreateOrderScreen({ navigation }) {
     'M': 'Quần áo mùa đông, chăn ga, đồ cắm trại / 50-60 áo, 80-100 đồ mỏng',
     'L': 'Vali 24-28 inch, chăn ga lớn, nệm gấp / 80-100 áo, 130-160 đồ mỏng'
   };
+  
+  const FULL_DESCS = {
+    'S': {
+      dim: '52 x 36.5 x 27.5 cm (~52.2 lít)',
+      cap: '3-5 đôi giày, tài liệu, sách vở, balo laptop, mỹ phẩm, phụ kiện điện tử, đồ cá nhân nhỏ / 25-30 áo hoặc 15-20 quần (hoặc 40-50 món khi hút chân không).'
+    },
+    'M': {
+      dim: '62 x 44.5 x 32 cm (~88.4 lít)',
+      cap: 'Rất linh hoạt, lưu trữ theo mùa. Có thể chứa: Quần áo mùa đông, chăn mền cá nhân, đồ cắm trại, đồ thể thao. Quần áo xếp gọn: 50-60 áo hoặc 30-35 quần (hoặc 80-100 món khi hút chân không).'
+    },
+    'L': {
+      dim: '69.5 x 50 x 36 cm (~125.1 lít)',
+      cap: 'Vali 24-28 inch, chăn ga gối lớn, áo phao, bốt, nệm gấp, đồ chuyển trọ, đồ cồng kềnh / 80-100 áo hoặc 45-55 quần (hoặc 130-160 món khi hút chân không).'
+    }
+  };
 
-  const [boxes, setBoxes] = useState([{ size: 'M', item_description: SUGGESTED_DESCS['M'], notes: '' }]);
+  const [boxes, setBoxes] = useState([{ size: 'M', item_description: '', notes: '' }]);
   const [pickupAddress, setPickupAddress] = useState(user?.default_pickup_address || '');
   const [pickupTime, setPickupTime] = useState('');
   
@@ -120,7 +135,7 @@ export default function CreateOrderScreen({ navigation }) {
   const [customUnit, setCustomUnit] = useState('days');
 
   const addBox = () => {
-    setBoxes([...boxes, { size: 'M', item_description: SUGGESTED_DESCS['M'], notes: '' }]);
+    setBoxes([...boxes, { size: 'M', item_description: '', notes: '' }]);
   };
 
   const removeBox = (index) => {
@@ -129,20 +144,7 @@ export default function CreateOrderScreen({ navigation }) {
   };
   const updateBox = (index, field, value) => {
     const updated = [...boxes];
-    const currentBox = updated[index];
-    
-    // Auto-fill description logic
-    if (field === 'size') {
-      const oldSize = currentBox.size;
-      const oldDefaultDesc = SUGGESTED_DESCS[oldSize];
-      
-      // If desc is empty or untouched from previous auto-fill, replace it
-      if (!currentBox.item_description || currentBox.item_description === oldDefaultDesc) {
-        currentBox.item_description = SUGGESTED_DESCS[value] || '';
-      }
-    }
-    
-    currentBox[field] = value;
+    updated[index][field] = value;
     setBoxes(updated);
   };
 
@@ -278,23 +280,36 @@ export default function CreateOrderScreen({ navigation }) {
                 ))}
               </View>
 
+              {/* Capacity Info Box */}
+              <View style={{ backgroundColor: '#f0f9ff', padding: 12, borderRadius: 8, marginTop: 12, marginBottom: 16 }}>
+                <Text style={{ fontSize: 13, color: '#1e3a8a', marginBottom: 4 }}>
+                  <Text style={{ fontWeight: 'bold' }}>Kích thước: </Text>
+                  {FULL_DESCS[box.size].dim}
+                </Text>
+                <Text style={{ fontSize: 13, color: '#1e3a8a', lineHeight: 20 }}>
+                  <Text style={{ fontWeight: 'bold' }}>Sức chứa: </Text>
+                  {FULL_DESCS[box.size].cap}
+                </Text>
+              </View>
+
               <Text style={styles.fieldLabel}>Mô tả hàng hóa *</Text>
               <TextInput
-                style={[styles.input, { backgroundColor: '#f3f4f6', color: '#6b7280' }]}
+                style={styles.input}
+                placeholder={SUGGESTED_DESCS[box.size]}
+                placeholderTextColor="#9ca3af"
                 value={box.item_description}
-                editable={false}
+                onChangeText={(v) => updateBox(index, 'item_description', v)}
                 multiline={true}
               />
 
-              <Text style={styles.fieldLabel}>Ghi chú (tùy chọn)</Text>
+              <Text style={styles.fieldLabel}>Ghi chú (tùy chọn cho thùng này)</Text>
               <TextInput
                 style={styles.input}
-                placeholder="VD: Hàng dễ vỡ, cần cẩn thận..."
-                placeholderTextColor="#9ca3af"
                 value={box.notes}
                 onChangeText={(v) => updateBox(index, 'notes', v)}
-                autoCorrect={false}
-                spellCheck={false}
+                multiline={true}
+                placeholder="VD: Hàng dễ vỡ..."
+                placeholderTextColor="#9ca3af"
               />
             </View>
           ))}
