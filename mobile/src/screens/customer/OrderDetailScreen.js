@@ -13,6 +13,83 @@ const statusLabels = {
   'RETURNED': { label: '✅ Đã Trả', color: '#10b981', bg: '#d1fae5' },
 };
 
+const LiveCountdown = ({ startDateStr, durationDays }) => {
+  const [timeLeft, setTimeLeft] = useState('');
+  const [isExpired, setIsExpired] = useState(false);
+  const [elapsedText, setElapsedText] = useState('');
+
+  useEffect(() => {
+    const calculateTime = () => {
+      const start = new Date(startDateStr);
+      const now = new Date();
+      const elapsedMs = now.getTime() - start.getTime();
+      const elapsedDays = Math.floor(elapsedMs / (1000 * 3600 * 24));
+      setElapsedText(`Thực tế lưu kho: ${elapsedDays} ngày`);
+
+      if (durationDays > 0) {
+        const end = new Date(start.getTime() + durationDays * 24 * 3600 * 1000);
+        const remainingMs = end.getTime() - now.getTime();
+        
+        if (remainingMs <= 0) {
+          setIsExpired(true);
+          setTimeLeft(formatTime(Math.abs(remainingMs)));
+        } else {
+          setIsExpired(false);
+          setTimeLeft(formatTime(remainingMs));
+        }
+      }
+    };
+
+    calculateTime();
+    const timer = setInterval(calculateTime, 1000);
+    return () => clearInterval(timer);
+  }, [startDateStr, durationDays]);
+
+  const formatTime = (ms) => {
+    const totalSeconds = Math.floor(ms / 1000);
+    const seconds = totalSeconds % 60;
+    const minutes = Math.floor(totalSeconds / 60) % 60;
+    const hours = Math.floor(totalSeconds / 3600) % 24;
+    const days = Math.floor(totalSeconds / (3600 * 24));
+    
+    let result = '';
+    if (days >= 30) {
+      const months = Math.floor(days / 30);
+      const remDays = days % 30;
+      result += `${months} tháng `;
+      if (remDays > 0) result += `${remDays} ngày `;
+    } else if (days > 0) {
+      result += `${days} ngày `;
+    }
+    
+    result += `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    return result;
+  };
+
+  if (durationDays > 0) {
+    if (isExpired) {
+      return (
+        <View>
+          <Text style={{ fontSize: 13, color: '#374151' }}>{elapsedText}</Text>
+          <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#dc2626', marginTop: 4 }}>⚠️ Quá hạn: {timeLeft}</Text>
+        </View>
+      );
+    }
+    return (
+      <View>
+        <Text style={{ fontSize: 13, color: '#374151' }}>{elapsedText}</Text>
+        <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#16a34a', marginTop: 4 }}>⏱️ Còn lại: {timeLeft}</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View>
+      <Text style={{ fontSize: 13, color: '#374151', fontWeight: '500' }}>{elapsedText}</Text>
+    </View>
+  );
+};
+
 export default function OrderDetailScreen({ route, navigation }) {
   const { orderId } = route.params;
   const [order, setOrder] = useState(null);
@@ -203,35 +280,12 @@ export default function OrderDetailScreen({ route, navigation }) {
                   Thời gian thuê: {order.duration_days >= 30 && order.duration_days % 30 === 0 ? `${order.duration_days / 30} tháng` : `${order.duration_days} ngày`}
                 </Text>
               )}
-              {(order.hub_arrival_date || order.status === 'IN_HUB') ? (() => {
-                const start = new Date(order.hub_arrival_date || order.last_updated || order.created_at);
-                const now = new Date();
-                const diffInDays = Math.floor((now.getTime() - start.getTime()) / (1000 * 3600 * 24));
-                
-                let remainingText = null;
-                let color = '#374151';
-                
-                if (order.duration_days > 0) {
-                  const remaining = order.duration_days - diffInDays;
-                  if (remaining < 0) {
-                    remainingText = `⚠️ Quá hạn ${Math.abs(remaining)} ngày`;
-                    color = '#dc2626';
-                  } else if (remaining <= 3) {
-                    remainingText = `⏳ Còn lại ${remaining} ngày (sắp hết hạn)`;
-                    color = '#ea580c';
-                  } else {
-                    remainingText = `✅ Còn lại ${remaining} ngày`;
-                    color = '#16a34a';
-                  }
-                }
-                
-                return (
-                  <View>
-                    <Text style={{ fontSize: 13, color: '#374151' }}>Thực tế lưu kho: {diffInDays} ngày</Text>
-                    {remainingText && <Text style={{ fontSize: 13, fontWeight: 'bold', color: color, marginTop: 4 }}>{remainingText}</Text>}
-                  </View>
-                );
-              })() : (
+              {(order.hub_arrival_date || order.status === 'IN_HUB') ? (
+                <LiveCountdown 
+                  startDateStr={order.hub_arrival_date || order.last_updated || order.created_at} 
+                  durationDays={order.duration_days} 
+                />
+              ) : (
                 <Text style={{ fontSize: 13, color: '#6b7280', fontStyle: 'italic' }}>Chưa nhập kho</Text>
               )}
             </View>

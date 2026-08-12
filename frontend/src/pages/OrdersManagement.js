@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import MapView from '@/components/MapView';
 import LocationPicker from '@/components/LocationPicker';
+import LiveCountdown from '@/components/LiveCountdown';
 
 const statusColors = {
   'WAITING_FOR_PICKUP': 'bg-yellow-100 text-yellow-800 border-yellow-300',
@@ -237,35 +238,12 @@ const OrdersManagement = () => {
               <span className="ml-auto font-bold text-blue-600">{order.duration_days >= 30 && order.duration_days % 30 === 0 ? `${order.duration_days / 30} tháng` : `${order.duration_days} ngày`}</span>
             </h4>
             
-            {(order.hub_arrival_date || order.status === 'IN_HUB') ? (() => {
-              const start = new Date(order.hub_arrival_date || order.last_updated || order.created_at);
-              const now = new Date();
-              const diffInTime = now.getTime() - start.getTime();
-              const diffInDays = Math.floor(diffInTime / (1000 * 3600 * 24));
-              
-              let statusText = `Đã lưu kho: ${diffInDays} ngày`;
-              let statusColor = "text-blue-700";
-              
-              if (order.duration_days > 0) {
-                const remaining = order.duration_days - diffInDays;
-                if (remaining < 0) {
-                  statusText = `⚠️ Quá hạn ${Math.abs(remaining)} ngày`;
-                  statusColor = "text-red-600 font-bold";
-                } else if (remaining <= 3) {
-                  statusText = `⏳ Sắp hết hạn (Còn ${remaining} ngày)`;
-                  statusColor = "text-orange-600 font-medium";
-                } else {
-                  statusText = `⏱️ Còn lại: ${remaining} ngày`;
-                }
-              }
-
-              return (
-                <div className={`flex items-center justify-between mt-1 pt-1 ${order.duration_days > 0 ? 'border-t border-blue-200 border-dashed' : ''}`}>
-                  <span className={statusColor}>{statusText}</span>
-                  <span className="text-gray-500 text-[10px]">(Từ: {start.toLocaleDateString('vi-VN')})</span>
-                </div>
-              );
-            })() : (
+            {(order.hub_arrival_date || order.status === 'IN_HUB') ? (
+              <LiveCountdown 
+                startDateStr={order.hub_arrival_date || order.last_updated || order.created_at} 
+                durationDays={order.duration_days} 
+              />
+            ) : (
               <div className="flex items-center justify-between mt-1 pt-1 border-t border-blue-200 border-dashed">
                  <span className="text-gray-500 italic">Chưa nhập kho (Hub)</span>
               </div>

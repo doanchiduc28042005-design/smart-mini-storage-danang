@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import MapView from '@/components/MapView';
+import LiveCountdown from '@/components/LiveCountdown';
 
 const statusConfig = {
   'WAITING_FOR_PICKUP': { label: '⏳ Chờ Shipper Lấy', color: 'bg-yellow-100 text-yellow-800 border-yellow-300', step: 1 },
@@ -235,33 +236,14 @@ const TrackingPage = () => {
                         </p>
                       )}
                       
-                      {(order.hub_arrival_date || order.status === 'IN_HUB') ? (() => {
-                        const start = new Date(order.hub_arrival_date || order.last_updated || order.created_at);
-                        const now = new Date();
-                        const diffInDays = Math.floor((now.getTime() - start.getTime()) / (1000 * 3600 * 24));
-                        
-                        let alertMsg = null;
-                        
-                        if (order.duration_days > 0) {
-                          const remaining = order.duration_days - diffInDays;
-                          if (remaining < 0) {
-                            alertMsg = <div className="mt-2 p-2 bg-red-100 text-red-700 rounded border border-red-200 text-sm font-medium">⚠️ Đã quá hạn lưu kho {Math.abs(remaining)} ngày. Vui lòng nhận lại hàng để tránh phát sinh phụ phí.</div>;
-                          } else if (remaining <= 3) {
-                            alertMsg = <div className="mt-2 p-2 bg-orange-100 text-orange-700 rounded border border-orange-200 text-sm font-medium">⏳ Sắp hết hạn lưu kho (còn {remaining} ngày).</div>;
-                          } else {
-                            alertMsg = <div className="mt-2 p-2 bg-green-100 text-green-700 rounded border border-green-200 text-sm font-medium">✅ Hàng đang được lưu trữ an toàn. Còn lại {remaining} ngày.</div>;
-                          }
-                        }
-                        
-                        return (
-                          <>
-                            <p className="text-sm text-indigo-800 mt-1">
-                              <strong>Thực tế lưu kho:</strong> {diffInDays} ngày (từ {start.toLocaleDateString('vi-VN')})
-                            </p>
-                            {alertMsg}
-                          </>
-                        );
-                      })() : (
+                      {(order.hub_arrival_date || order.status === 'IN_HUB') ? (
+                        <div className="mt-2">
+                          <LiveCountdown 
+                            startDateStr={order.hub_arrival_date || order.last_updated || order.created_at} 
+                            durationDays={order.duration_days} 
+                          />
+                        </div>
+                      ) : (
                         <p className="text-sm text-gray-500 italic mt-1">Thùng hàng chưa được nhập kho.</p>
                       )}
                     </div>
