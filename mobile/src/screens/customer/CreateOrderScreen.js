@@ -6,18 +6,18 @@ import { useAuth } from '../../context/AuthContext';
 import { createMyOrder } from '../../services/api';
 
 const BOX_SIZES = [
-  { value: 'S', label: 'S - Nhỏ', desc: '52x36.5x27.5cm', price: '120,000đ/tháng' },
-  { value: 'M', label: 'M - Vừa', desc: '62x44.5x32cm', price: '180,000đ/tháng' },
-  { value: 'L', label: 'L - Lớn', desc: '69.5x50x36cm', price: '270,000đ/tháng' },
+  { value: 'S', label: 'S - Nhỏ', desc: '52x36.5x27.5cm (~52.2L)', price: '120,000đ/tháng' },
+  { value: 'M', label: 'M - Vừa', desc: '62x44.5x32cm (~88.4L)', price: '180,000đ/tháng' },
+  { value: 'L', label: 'L - Lớn', desc: '69.5x50x36cm (~125.1L)', price: '270,000đ/tháng' },
 ];
 
 export default function CreateOrderScreen({ navigation }) {
   const { user } = useAuth();
   
   const SUGGESTED_DESCS = {
-    'S': 'Quần áo, tài liệu, đồ cá nhân nhỏ',
-    'M': 'Chăn ga, đồ thể thao, hộp carton vừa',
-    'L': 'Vali lớn, chăn bông dày, đồ cồng kềnh'
+    'S': '3-5 đôi giày, tài liệu, balo laptop / 25-30 áo, 40-50 đồ mỏng',
+    'M': 'Quần áo mùa đông, chăn ga, đồ cắm trại / 50-60 áo, 80-100 đồ mỏng',
+    'L': 'Vali 24-28 inch, chăn ga lớn, nệm gấp / 80-100 áo, 130-160 đồ mỏng'
   };
 
   const [boxes, setBoxes] = useState([{ size: 'M', item_description: SUGGESTED_DESCS['M'], notes: '' }]);

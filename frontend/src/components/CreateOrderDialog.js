@@ -22,21 +22,21 @@ const BOX_SIZES = {
     dimensions: '52 x 36.5 x 27.5 cm (~52.2 lít)',
     price: 4000,
     priceMonth: 120000,
-    capacity: 'Đặc điểm: Gọn nhẹ, thích hợp đồ cá nhân. Sức chứa: 3-5 đôi giày, tài liệu, balo laptop / 25-30 áo hoặc 15-20 quần / 40-50 món đồ mỏng, chăn mỏng.'
+    capacity: 'Đặc điểm: Gọn nhẹ, thích hợp đồ cá nhân. Có thể chứa: 3-5 đôi giày, tài liệu, balo laptop, phụ kiện. Quần áo xếp gọn: 25-30 áo hoặc 15-20 quần (hoặc 40-50 món khi hút chân không).'
   },
   'M': {
     name: 'Size M (Thùng tiêu chuẩn)',
     dimensions: '62 x 44.5 x 32 cm (~88.4 lít)',
     price: 6000,
     priceMonth: 180000,
-    capacity: 'Dung tích trung bình: Rất linh hoạt. Sức chứa: Quần áo theo mùa, chăn ga cá nhân, đồ chơi / 50-60 áo hoặc 30-35 quần / 80-100 món đồ, thêm 1 chăn bông nhỏ sau khi hút chân không.'
+    capacity: 'Rất linh hoạt, lưu trữ theo mùa. Có thể chứa: Quần áo mùa đông, chăn mền cá nhân, đồ cắm trại, đồ thể thao. Quần áo xếp gọn: 50-60 áo hoặc 30-35 quần (hoặc 80-100 món khi hút chân không).'
   },
   'L': {
     name: 'Size L (Thùng lớn)',
     dimensions: '69.5 x 50 x 36 cm (~125.1 lít)',
     price: 9000,
     priceMonth: 270000,
-    capacity: 'Dung tích lớn nhất: Cho đồ cồng kềnh. Sức chứa: Vali 24-28 inch, nệm gấp, áo phao / 80-100 áo hoặc 45-55 quần / 130-160 món đồ, chăn mền dày, đồ chuyển trọ.'
+    capacity: 'Chuyên dụng đồ cồng kềnh. Có thể chứa: Vali 24-28 inch, chăn ga gối nệm lớn, đồ chuyển trọ, nệm gấp. Quần áo xếp gọn: 80-100 áo hoặc 45-55 quần (hoặc 130-160 món khi hút chân không).'
   }
 };
 
