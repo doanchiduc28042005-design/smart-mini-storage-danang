@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, ActivityIndicator, Switch, Platform } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -6,10 +6,64 @@ import { useAuth } from '../../context/AuthContext';
 import { createMyOrder } from '../../services/api';
 
 const BOX_SIZES = [
-  { value: 'S', label: 'S - Nhỏ', desc: '52x36.5x27.5cm (~52.2L)', price: '120,000đ/tháng' },
-  { value: 'M', label: 'M - Vừa', desc: '62x44.5x32cm (~88.4L)', price: '180,000đ/tháng' },
-  { value: 'L', label: 'L - Lớn', desc: '69.5x50x36cm (~125.1L)', price: '270,000đ/tháng' },
+  { value: 'S', label: 'S - Nhỏ', desc: '52x36.5x27.5cm\n(~52.2L)', price: '120,000đ/tháng' },
+  { value: 'M', label: 'M - Vừa', desc: '62x44.5x32cm\n(~88.4L)', price: '180,000đ/tháng' },
+  { value: 'L', label: 'L - Lớn', desc: '69.5x50x36cm\n(~125.1L)', price: '270,000đ/tháng' },
 ];
+
+const SHIPPING_BASE_FEE = 20000;
+const SHIPPING_EXTRA_KM_FEE = 5000;
+const SHIPPING_MAX_FREE_KM = 5;
+const SHIPPING_STAIR_FEE = 15000;
+const SHIPPING_BULK_FEE = 5000;
+
+const calculateShippingFee = (deliveryMethod, distanceKm, floorNumber, hasElevator, numBoxes) => {
+  if (deliveryMethod === 'self_pickup') {
+    return {
+      outboundFee: 0, returnFee: 0, totalShippingFee: 0,
+      distanceSurcharge: 0, stairFee: 0, bulkDiscount: 0,
+      outboundDiscount: 0, returnDiscount: 0,
+      notes: ['Tự mang đến trạm - Miễn phí hoàn toàn']
+    };
+  }
+
+  const baseFee = SHIPPING_BASE_FEE;
+  let distanceSurcharge = 0;
+  if (distanceKm > SHIPPING_MAX_FREE_KM) {
+    const extraKm = Math.ceil(distanceKm - SHIPPING_MAX_FREE_KM);
+    distanceSurcharge = extraKm * SHIPPING_EXTRA_KM_FEE;
+  }
+
+  let stairFee = 0;
+  if (floorNumber >= 3 && !hasElevator) {
+    stairFee = SHIPPING_STAIR_FEE;
+  }
+
+  let bulkDiscount = 0;
+  if (numBoxes > 1) {
+    bulkDiscount = (numBoxes - 1) * (baseFee - SHIPPING_BULK_FEE);
+  }
+
+  let singleTripFee = (baseFee * numBoxes) - bulkDiscount + distanceSurcharge + stairFee;
+  if (singleTripFee < 0) singleTripFee = 0;
+
+  let outboundFee = singleTripFee;
+  let returnFee = singleTripFee;
+  let outboundDiscount = 0;
+  let returnDiscount = 0;
+  const notes = [];
+
+  if (distanceSurcharge > 0) notes.push(`Phí vượt khoảng cách: +${distanceSurcharge.toLocaleString()} VND`);
+  if (stairFee > 0) notes.push(`Phí bê vác cầu thang bộ (tầng ${floorNumber}): +${stairFee.toLocaleString()} VND`);
+  if (bulkDiscount > 0) notes.push(`Giảm giá gom ${numBoxes} thùng: -${bulkDiscount.toLocaleString()} VND/lượt`);
+
+  return {
+    outboundFee, returnFee,
+    totalShippingFee: outboundFee + returnFee,
+    distanceSurcharge, stairFee, bulkDiscount,
+    outboundDiscount, returnDiscount, notes
+  };
+};
 
 export default function CreateOrderScreen({ navigation }) {
   const { user } = useAuth();
@@ -91,6 +145,48 @@ export default function CreateOrderScreen({ navigation }) {
     currentBox[field] = value;
     setBoxes(updated);
   };
+
+  const storageCost = useMemo(() => {
+    let finalUnit = 'months';
+    let finalValue = 1;
+    if (isCustomDuration) {
+      finalUnit = customUnit;
+      finalValue = parseInt(customDurationText) || 1;
+    } else {
+      if (durationDays < 30) {
+        finalUnit = 'days';
+        finalValue = durationDays;
+      } else {
+        finalUnit = 'months';
+        finalValue = durationDays / 30;
+      }
+    }
+
+    let totalStorage = 0;
+    boxes.forEach(b => {
+      let priceDay = 0, priceMonth = 0;
+      if (b.size === 'S') { priceDay = 4000; priceMonth = 120000; }
+      if (b.size === 'M') { priceDay = 6000; priceMonth = 180000; }
+      if (b.size === 'L') { priceDay = 9000; priceMonth = 270000; }
+      
+      totalStorage += finalUnit === 'days' ? priceDay * finalValue : priceMonth * finalValue;
+    });
+    
+    return { 
+      totalStorage,
+      label: finalUnit === 'days' ? `${finalValue} ngày` : `${finalValue} tháng`
+    };
+  }, [boxes, durationDays, isCustomDuration, customDurationText, customUnit]);
+
+  const shippingCost = useMemo(() => {
+    return calculateShippingFee(
+      deliveryMethod,
+      parseFloat(distanceKm) || 3,
+      parseInt(floorNumber) || 0,
+      hasElevator,
+      boxes.length
+    );
+  }, [deliveryMethod, distanceKm, floorNumber, hasElevator, boxes.length]);
 
   const handleSubmit = async () => {
     if (!pickupAddress.trim()) {
@@ -184,13 +280,10 @@ export default function CreateOrderScreen({ navigation }) {
 
               <Text style={styles.fieldLabel}>Mô tả hàng hóa *</Text>
               <TextInput
-                style={styles.input}
-                placeholder="VD: Quần áo mùa đông, sách vở..."
-                placeholderTextColor="#9ca3af"
+                style={[styles.input, { backgroundColor: '#f3f4f6', color: '#6b7280' }]}
                 value={box.item_description}
-                onChangeText={(v) => updateBox(index, 'item_description', v)}
-                autoCorrect={false}
-                spellCheck={false}
+                editable={false}
+                multiline={true}
               />
 
               <Text style={styles.fieldLabel}>Ghi chú (tùy chọn)</Text>
@@ -383,6 +476,66 @@ export default function CreateOrderScreen({ navigation }) {
             <Switch value={acceptNoProhibited} onValueChange={setAcceptNoProhibited} trackColor={{ true: '#4f46e5' }} />
           </View>
 
+          {/* Billing Summary */}
+          <View style={styles.billContainer}>
+            <Text style={styles.billTitle}>🧾 Tạm tính chi phí</Text>
+            
+            {/* Storage cost */}
+            <View style={styles.billRow}>
+              <Text style={styles.billLabel}>📦 Phí lưu kho ({storageCost.label}):</Text>
+              <Text style={styles.billValue}>{storageCost.totalStorage.toLocaleString()} đ</Text>
+            </View>
+
+            {/* Shipping cost */}
+            <View style={styles.billRow}>
+              <Text style={styles.billLabel}>🚚 Ship lượt GỬI:</Text>
+              <Text style={styles.billValue}>{shippingCost.outboundFee.toLocaleString()} đ</Text>
+            </View>
+            <View style={styles.billRow}>
+              <Text style={styles.billLabel}>🚚 Ship lượt TRẢ:</Text>
+              <Text style={styles.billValue}>{shippingCost.returnFee.toLocaleString()} đ</Text>
+            </View>
+
+            {shippingCost.distanceSurcharge > 0 && (
+              <View style={styles.billRow}>
+                <Text style={styles.billSubLabel}>↳ Phí vượt khoảng cách:</Text>
+                <Text style={styles.billSubValue}>+{shippingCost.distanceSurcharge.toLocaleString()} đ</Text>
+              </View>
+            )}
+            {shippingCost.stairFee > 0 && (
+              <View style={styles.billRow}>
+                <Text style={styles.billSubLabel}>↳ Phí bê vác cầu thang:</Text>
+                <Text style={styles.billSubValue}>+{shippingCost.stairFee.toLocaleString()} đ</Text>
+              </View>
+            )}
+            {shippingCost.bulkDiscount > 0 && (
+              <View style={styles.billRow}>
+                <Text style={styles.billSubLabel}>↳ Giảm giá gom thùng:</Text>
+                <Text style={[styles.billSubValue, { color: '#16a34a' }]}>-{shippingCost.bulkDiscount.toLocaleString()} đ/lượt</Text>
+              </View>
+            )}
+
+            {shippingCost.notes.length > 0 && (
+              <View style={{ marginTop: 8 }}>
+                {shippingCost.notes.map((note, i) => (
+                  <Text key={i} style={styles.billNoteText}>💡 {note}</Text>
+                ))}
+              </View>
+            )}
+
+            <View style={styles.billDivider} />
+            <View style={styles.billRow}>
+              <Text style={styles.billTotalLabel}>Tổng phí ship (2 lượt):</Text>
+              <Text style={styles.billTotalValue}>{shippingCost.totalShippingFee.toLocaleString()} đ</Text>
+            </View>
+            <View style={styles.billRow}>
+              <Text style={styles.billGrandTotalLabel}>Tổng cộng:</Text>
+              <Text style={styles.billGrandTotalValue}>
+                {(shippingCost.totalShippingFee + storageCost.totalStorage).toLocaleString()} đ
+              </Text>
+            </View>
+          </View>
+
           <TouchableOpacity
             style={[styles.submitBtn, (!acceptNoProhibited || loading) && styles.submitBtnDisabled]}
             onPress={handleSubmit}
@@ -477,7 +630,7 @@ const styles = StyleSheet.create({
   sizeBtnActive: { borderColor: '#4f46e5', backgroundColor: '#4f46e5' },
   sizeBtnText: { fontSize: 13, fontWeight: '600', color: '#374151' },
   sizeBtnTextActive: { color: '#ffffff' },
-  sizeDesc: { fontSize: 10, color: '#9ca3af', marginTop: 2 },
+  sizeDesc: { fontSize: 10, color: '#9ca3af', marginTop: 2, textAlign: 'center' },
   addBoxBtn: { paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: '#4f46e5', borderStyle: 'dashed', alignItems: 'center', marginTop: 8 },
   addBoxText: { color: '#4f46e5', fontWeight: '600', fontSize: 14 },
   deliveryRow: { flexDirection: 'row', gap: 10 },
@@ -487,6 +640,22 @@ const styles = StyleSheet.create({
   deliveryText: { fontSize: 13, fontWeight: '600', color: '#6b7280' },
   deliveryTextActive: { color: '#4f46e5' },
   switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 },
+  
+  /* Bill styles */
+  billContainer: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginTop: 16, borderWidth: 1, borderColor: '#fdba74' },
+  billTitle: { fontSize: 16, fontWeight: 'bold', color: '#c2410c', marginBottom: 12 },
+  billRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+  billLabel: { fontSize: 13, color: '#4b5563', fontWeight: '500' },
+  billValue: { fontSize: 13, fontWeight: 'bold', color: '#111827' },
+  billSubLabel: { fontSize: 12, color: '#ea580c', paddingLeft: 16 },
+  billSubValue: { fontSize: 12, color: '#ea580c', fontWeight: '600' },
+  billNoteText: { fontSize: 12, color: '#4338ca', marginBottom: 2 },
+  billDivider: { height: 1, backgroundColor: '#fed7aa', marginVertical: 12 },
+  billTotalLabel: { fontSize: 13, fontWeight: 'bold', color: '#9a3412' },
+  billTotalValue: { fontSize: 14, fontWeight: 'bold', color: '#ea580c' },
+  billGrandTotalLabel: { fontSize: 14, fontWeight: 'bold', color: '#9a3412' },
+  billGrandTotalValue: { fontSize: 18, fontWeight: 'bold', color: '#c2410c' },
+
   submitBtn: { backgroundColor: '#4f46e5', paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 16 },
   submitBtnDisabled: { opacity: 0.5 },
   submitBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },

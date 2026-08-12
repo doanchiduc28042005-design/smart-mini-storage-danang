@@ -40,9 +40,14 @@ const BOX_SIZES = {
   }
 };
 
-// Shipping fee constants (mirror backend)
 const SHIPPING_BASE_FEE = 20000;
 const SHIPPING_EXTRA_KM_FEE = 5000;
+
+const SUGGESTED_DESCS = {
+  'S': '3-5 đôi giày, tài liệu, balo laptop / 25-30 áo, 40-50 đồ mỏng',
+  'M': 'Quần áo mùa đông, chăn ga, đồ cắm trại / 50-60 áo, 80-100 đồ mỏng',
+  'L': 'Vali 24-28 inch, chăn ga lớn, nệm gấp / 80-100 áo, 130-160 đồ mỏng'
+};
 const SHIPPING_MAX_FREE_KM = 5;
 const SHIPPING_STAIR_FEE = 15000;
 const SHIPPING_BULK_FEE = 5000;
@@ -135,7 +140,7 @@ const CreateOrderDialog = ({ open, onOpenChange, defaultAddress, onCreated }) =>
   }, [open]);
 
   const resetForm = () => {
-    setBoxes([{ id: Date.now(), size: 'M', item_description: '', notes: '' }]);
+    setBoxes([{ id: Date.now(), size: 'M', item_description: SUGGESTED_DESCS['M'], notes: '' }]);
     setForm({ pickup_date: '', pickup_time: '', pickup_address: '' });
     setShipping({ delivery_method: 'standard', distance_km: 3, floor_number: 0, has_elevator: true });
     setAcceptNoProhibited(false);
@@ -152,11 +157,20 @@ const CreateOrderDialog = ({ open, onOpenChange, defaultAddress, onCreated }) =>
   };
 
   const handleBoxChange = (id, field, value) => {
-    setBoxes(boxes.map(b => b.id === id ? { ...b, [field]: value } : b));
+    setBoxes(boxes.map(b => {
+      if (b.id === id) {
+        let newB = { ...b, [field]: value };
+        if (field === 'size') {
+          newB.item_description = SUGGESTED_DESCS[value] || '';
+        }
+        return newB;
+      }
+      return b;
+    }));
   };
 
   const addBox = () => {
-    setBoxes([...boxes, { id: Date.now(), size: 'M', item_description: '', notes: '' }]);
+    setBoxes([...boxes, { id: Date.now(), size: 'M', item_description: SUGGESTED_DESCS['M'], notes: '' }]);
   };
 
   const removeBox = (id) => {
@@ -167,14 +181,31 @@ const CreateOrderDialog = ({ open, onOpenChange, defaultAddress, onCreated }) =>
 
   // Storage cost
   const storageCost = useMemo(() => {
-    let totalDay = 0;
-    let totalMonth = 0;
+    let finalUnit = 'months';
+    let finalValue = 1;
+    if (isCustomDuration) {
+      finalUnit = customUnit;
+      finalValue = parseInt(durationDays) || 1;
+    } else {
+      if (durationDays < 30) {
+        finalUnit = 'days';
+        finalValue = parseInt(durationDays) || 1;
+      } else {
+        finalUnit = 'months';
+        finalValue = (parseInt(durationDays) || 30) / 30;
+      }
+    }
+
+    let totalStorage = 0;
     boxes.forEach(b => {
-      totalDay += BOX_SIZES[b.size].price;
-      totalMonth += BOX_SIZES[b.size].priceMonth;
+      let price = finalUnit === 'days' ? BOX_SIZES[b.size].price : BOX_SIZES[b.size].priceMonth;
+      totalStorage += price * finalValue;
     });
-    return { totalDay, totalMonth };
-  }, [boxes]);
+    return { 
+       totalStorage, 
+       label: finalUnit === 'days' ? `${finalValue} ngày` : `${finalValue} tháng` 
+    };
+  }, [boxes, durationDays, isCustomDuration, customUnit]);
 
   // Shipping cost (real-time)
   const shippingCost = useMemo(() => {
@@ -324,11 +355,10 @@ const CreateOrderDialog = ({ open, onOpenChange, defaultAddress, onCreated }) =>
                     <div className="space-y-2">
                       <Label className="text-gray-700">Mô tả hàng hóa *</Label>
                       <Textarea
-                        placeholder="VD: Quần áo mùa đông, sách vở cũ..."
                         value={box.item_description}
-                        onChange={(e) => handleBoxChange(box.id, 'item_description', e.target.value)}
+                        readOnly
                         rows={2}
-                        className="bg-white border-gray-300"
+                        className="bg-gray-100 border-gray-300 text-gray-600 cursor-not-allowed"
                       />
                     </div>
                     
@@ -598,13 +628,11 @@ const CreateOrderDialog = ({ open, onOpenChange, defaultAddress, onCreated }) =>
               
               {/* Storage cost */}
               <div className="bg-white/70 rounded-md p-3 space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">📦 Phí lưu kho:</span>
-                  <span className="font-medium">{storageCost.totalDay.toLocaleString()} VND/ngày</span>
-                </div>
-                <div className="flex justify-between text-gray-500 text-xs">
-                  <span></span>
-                  <span>(~{storageCost.totalMonth.toLocaleString()} VND/tháng)</span>
+                <div className="flex justify-between items-center text-gray-800">
+                  <span>📦 Phí lưu kho ({storageCost.label}):</span>
+                  <span className="font-bold text-orange-700 text-base">
+                    {storageCost.totalStorage.toLocaleString()} VND
+                  </span>
                 </div>
               </div>
 
@@ -666,9 +694,9 @@ const CreateOrderDialog = ({ open, onOpenChange, defaultAddress, onCreated }) =>
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-semibold text-orange-900">Tổng cộng (ship + lưu kho tháng đầu):</span>
+                  <span className="text-sm font-semibold text-orange-900">Tổng cộng (ship + lưu kho):</span>
                   <span className="text-2xl font-bold text-orange-700">
-                    {(shippingCost.totalShippingFee + storageCost.totalMonth).toLocaleString()} VND
+                    {(shippingCost.totalShippingFee + storageCost.totalStorage).toLocaleString()} VND
                   </span>
                 </div>
               </div>

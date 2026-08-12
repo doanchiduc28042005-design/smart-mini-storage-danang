@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, Alert, Modal, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
-import { getShipperOrders, updateOrderLocation } from '../../services/api';
+import { getShipperOrders, updateOrderLocation, scanQR } from '../../services/api';
 import * as Location from 'expo-location';
 
 const statusLabels = {
@@ -14,12 +14,26 @@ const statusLabels = {
   'RETURNED': { label: '✅ Đã Trả', color: '#10b981', bg: '#d1fae5' },
 };
 
+const STATUS_OPTIONS = [
+  { value: 'PICKED_UP', label: '🚚 Đã Lấy Hàng' },
+  { value: 'IN_HUB', label: '🏢 Đã Về Hub/Kho' },
+  { value: 'WAITING_FOR_RETURN', label: '⏳ Đã Nhập Hub, Chờ Trả Khách' },
+  { value: 'RETURNING', label: '🚚 Đang Đi Trả Khách' },
+  { value: 'RETURNED', label: '✅ Đã Giao Cho Khách' },
+];
+
 export default function ShipperHomeScreen({ navigation }) {
   const { user } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [updatingLocation, setUpdatingLocation] = useState(null);
+  
+  // Status update states
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [newStatus, setNewStatus] = useState('');
+  const [updateNotes, setUpdateNotes] = useState('');
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -42,23 +56,66 @@ export default function ShipperHomeScreen({ navigation }) {
   const handleUpdateLocation = async (orderId) => {
     setUpdatingLocation(orderId);
     try {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Lỗi', 'Cần cấp quyền truy cập vị trí để cập nhật tọa độ!');
-        return;
+      let location;
+      const servicesEnabled = await Location.hasServicesEnabledAsync();
+      
+      if (!servicesEnabled) {
+        // Fallback to mock location if GPS is disabled (useful for Emulator)
+        location = { coords: { latitude: 16.0544, longitude: 108.2022 } }; // Da Nang center
+        Alert.alert('Chế độ Máy ảo', 'GPS đang tắt. Tự động dùng tọa độ ảo (Đà Nẵng) để test!');
+      } else {
+        let { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Lỗi', 'Cần cấp quyền truy cập vị trí để cập nhật tọa độ!');
+          setUpdatingLocation(null);
+          return;
+        }
+
+        try {
+          location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        } catch (locErr) {
+          // If it still fails, use mock location
+          location = { coords: { latitude: 16.0544, longitude: 108.2022 } };
+          Alert.alert('Chế độ Máy ảo', 'Không lấy được vị trí thật. Đã tự động dùng tọa độ ảo (Đà Nẵng) để test!');
+        }
       }
 
-      let location = await Location.getCurrentPositionAsync({});
       await updateOrderLocation(orderId, {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude
       });
       
-      Alert.alert('Thành công', 'Đã cập nhật vị trí hiện tại của bạn cho đơn hàng này.');
+      Alert.alert('Thành công', 'Đã cập nhật vị trí cho đơn hàng này.');
     } catch (e) {
       Alert.alert('Lỗi', 'Không thể cập nhật vị trí: ' + (e.response?.data?.detail || e.message));
     } finally {
       setUpdatingLocation(null);
+    }
+  };
+
+  const openStatusModal = (order) => {
+    setSelectedOrder(order);
+    setNewStatus(order.status);
+    setUpdateNotes('');
+  };
+
+  const handleUpdateStatus = async () => {
+    if (!newStatus) return;
+    setUpdatingStatus(true);
+    try {
+      await scanQR({
+        order_id: selectedOrder.order_id,
+        shipper_id: user.id,
+        status: newStatus,
+        notes: updateNotes.trim() || undefined,
+      });
+      Alert.alert('Thành công', 'Đã cập nhật trạng thái đơn hàng!');
+      setSelectedOrder(null);
+      loadData();
+    } catch (e) {
+      Alert.alert('Lỗi', 'Không thể cập nhật trạng thái: ' + (e.response?.data?.detail || e.message));
+    } finally {
+      setUpdatingStatus(false);
     }
   };
 
@@ -138,18 +195,27 @@ export default function ShipperHomeScreen({ navigation }) {
                   <Text style={styles.orderAddress}>📍 {order.pickup_address}</Text>
                 )}
                 
-                {/* Location Update Button */}
-                <TouchableOpacity 
-                  style={styles.locationBtn}
-                  onPress={() => handleUpdateLocation(order.order_id)}
-                  disabled={updatingLocation === order.order_id}
-                >
-                  {updatingLocation === order.order_id ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <Text style={styles.locationBtnText}>📍 Cập nhật vị trí của tôi</Text>
-                  )}
-                </TouchableOpacity>
+                {/* Action Buttons */}
+                <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+                  <TouchableOpacity 
+                    style={[styles.actionBtn, { backgroundColor: '#10b981', flex: 1 }]}
+                    onPress={() => openStatusModal(order)}
+                  >
+                    <Text style={styles.actionBtnText}>🔄 Trạng thái</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={[styles.actionBtn, { backgroundColor: '#3b82f6', flex: 1 }]}
+                    onPress={() => handleUpdateLocation(order.order_id)}
+                    disabled={updatingLocation === order.order_id}
+                  >
+                    {updatingLocation === order.order_id ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={styles.actionBtnText}>📍 Vị trí</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
               </View>
             );
           })
@@ -157,6 +223,52 @@ export default function ShipperHomeScreen({ navigation }) {
 
         <View style={{ height: 20 }} />
       </ScrollView>
+
+      {/* Update Status Modal */}
+      <Modal visible={!!selectedOrder} animationType="fade" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Cập nhật đơn {selectedOrder?.order_id}</Text>
+            
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 300 }}>
+              {STATUS_OPTIONS.map(opt => (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[styles.statusOption, newStatus === opt.value && styles.statusOptionActive]}
+                  onPress={() => setNewStatus(opt.value)}
+                >
+                  <Text style={[styles.statusOptionText, newStatus === opt.value && styles.statusOptionTextActive]}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <TextInput
+              style={styles.notesInput}
+              placeholder="Ghi chú thêm..."
+              placeholderTextColor="#9ca3af"
+              value={updateNotes}
+              onChangeText={setUpdateNotes}
+              multiline
+            />
+
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: '#f3f4f6', flex: 1 }]} onPress={() => setSelectedOrder(null)}>
+                <Text style={[styles.modalBtnText, { color: '#4b5563' }]}>Hủy</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.modalBtn, { backgroundColor: '#10b981', flex: 1 }, (!newStatus || updatingStatus) && { opacity: 0.5 }]} 
+                onPress={handleUpdateStatus}
+                disabled={!newStatus || updatingStatus}
+              >
+                {updatingStatus ? <ActivityIndicator color="#fff" /> : <Text style={[styles.modalBtnText, { color: '#fff' }]}>Lưu</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -195,6 +307,16 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 12, fontWeight: '600' },
   orderCustomer: { fontSize: 13, color: '#374151', marginTop: 8 },
   orderAddress: { fontSize: 12, color: '#6b7280', marginTop: 4 },
-  locationBtn: { backgroundColor: '#3b82f6', marginTop: 12, paddingVertical: 10, borderRadius: 8, alignItems: 'center' },
-  locationBtnText: { color: '#fff', fontSize: 13, fontWeight: 'bold' }
+  actionBtn: { paddingVertical: 10, borderRadius: 8, alignItems: 'center' },
+  actionBtnText: { color: '#fff', fontSize: 13, fontWeight: 'bold' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalContent: { backgroundColor: '#fff', borderRadius: 16, padding: 20, width: '100%' },
+  modalTitle: { fontSize: 18, fontWeight: 'bold', color: '#111827', marginBottom: 16 },
+  statusOption: { paddingVertical: 12, paddingHorizontal: 16, borderRadius: 10, borderWidth: 1, borderColor: '#e5e7eb', marginBottom: 8 },
+  statusOptionActive: { borderColor: '#10b981', backgroundColor: '#ecfdf5' },
+  statusOptionText: { fontSize: 14, fontWeight: '600', color: '#6b7280' },
+  statusOptionTextActive: { color: '#10b981' },
+  notesInput: { backgroundColor: '#f9fafb', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 12, minHeight: 60, marginTop: 8, textAlignVertical: 'top' },
+  modalBtn: { paddingVertical: 12, borderRadius: 8, alignItems: 'center' },
+  modalBtnText: { fontWeight: 'bold', fontSize: 14 }
 });

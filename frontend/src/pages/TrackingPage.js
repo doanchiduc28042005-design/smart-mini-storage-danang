@@ -183,9 +183,94 @@ const TrackingPage = () => {
                   </div>
                 </div>
 
+                {/* Dynamic Status Notifications */}
+                <div className="mt-6 space-y-3">
+                  {order.status === 'WAITING_FOR_PICKUP' && (
+                    <div className="p-3 bg-yellow-50 text-yellow-800 border border-yellow-200 rounded-lg text-sm flex gap-2 items-start">
+                      <span className="text-lg">⏳</span>
+                      <p><strong>Thông báo:</strong> Đơn hàng của bạn đã được ghi nhận. Hệ thống đang điều phối Shipper đến lấy hàng theo lịch hẹn.</p>
+                    </div>
+                  )}
+                  {order.status === 'PICKED_UP' && (
+                    <div className="p-3 bg-blue-50 text-blue-800 border border-blue-200 rounded-lg text-sm flex gap-2 items-start">
+                      <span className="text-lg">🚚</span>
+                      <p><strong>Thông báo:</strong> Shipper đã lấy hàng thành công và đang trên đường vận chuyển về kho lưu trữ (Hub).</p>
+                    </div>
+                  )}
+                  {order.status === 'WAITING_FOR_RETURN' && (
+                    <div className="p-3 bg-orange-50 text-orange-800 border border-orange-200 rounded-lg text-sm flex gap-2 items-start">
+                      <span className="text-lg">📦</span>
+                      <p><strong>Thông báo:</strong> Yêu cầu trả hàng của bạn đã được tiếp nhận. Đơn hàng đang chờ điều phối Shipper để giao lại cho bạn.</p>
+                    </div>
+                  )}
+                  {order.status === 'RETURNING' && (
+                    <div className="p-3 bg-teal-50 text-teal-800 border border-teal-200 rounded-lg text-sm flex gap-2 items-start">
+                      <span className="text-lg">🚚</span>
+                      <p><strong>Thông báo:</strong> Shipper đang trên đường giao trả hàng về địa chỉ của bạn. Vui lòng chú ý điện thoại.</p>
+                    </div>
+                  )}
+                  {order.status === 'RETURNED' && (
+                    <div className="p-3 bg-green-50 text-green-800 border border-green-200 rounded-lg text-sm flex gap-2 items-start">
+                      <span className="text-lg">✅</span>
+                      <p><strong>Thông báo:</strong> Đơn hàng đã được trả thành công. Cảm ơn bạn đã sử dụng dịch vụ của Smart Mini Storage!</p>
+                    </div>
+                  )}
+                  {order.status === 'CANCELLED' && (
+                    <div className="p-3 bg-red-50 text-red-800 border border-red-200 rounded-lg text-sm flex gap-2 items-start">
+                      <span className="text-lg">❌</span>
+                      <p><strong>Thông báo:</strong> Đơn hàng của bạn đã bị hủy.</p>
+                    </div>
+                  )}
+
+                  {/* --- STORAGE DURATION ALERT --- */}
+                  {(order.duration_days > 0 || order.hub_arrival_date || order.status === 'IN_HUB') && (
+                    <div className="p-4 rounded-lg bg-indigo-50 border border-indigo-200">
+                      <h3 className="font-semibold text-indigo-900 mb-2 flex items-center gap-2">
+                        <span>⏳</span> Thông tin lưu kho
+                      </h3>
+                      
+                      {order.duration_days > 0 && (
+                        <p className="text-sm text-indigo-800">
+                          <strong>Thời gian đăng ký:</strong> {order.duration_days >= 30 && order.duration_days % 30 === 0 ? `${order.duration_days / 30} tháng` : `${order.duration_days} ngày`}
+                        </p>
+                      )}
+                      
+                      {order.hub_arrival_date ? (() => {
+                        const start = new Date(order.hub_arrival_date);
+                        const now = new Date();
+                        const diffInDays = Math.floor((now.getTime() - start.getTime()) / (1000 * 3600 * 24));
+                        
+                        let alertMsg = null;
+                        
+                        if (order.duration_days > 0) {
+                          const remaining = order.duration_days - diffInDays;
+                          if (remaining < 0) {
+                            alertMsg = <div className="mt-2 p-2 bg-red-100 text-red-700 rounded border border-red-200 text-sm font-medium">⚠️ Đã quá hạn lưu kho {Math.abs(remaining)} ngày. Vui lòng nhận lại hàng để tránh phát sinh phụ phí.</div>;
+                          } else if (remaining <= 3) {
+                            alertMsg = <div className="mt-2 p-2 bg-orange-100 text-orange-700 rounded border border-orange-200 text-sm font-medium">⏳ Sắp hết hạn lưu kho (còn {remaining} ngày).</div>;
+                          } else {
+                            alertMsg = <div className="mt-2 p-2 bg-green-100 text-green-700 rounded border border-green-200 text-sm font-medium">✅ Hàng đang được lưu trữ an toàn. Còn lại {remaining} ngày.</div>;
+                          }
+                        }
+                        
+                        return (
+                          <>
+                            <p className="text-sm text-indigo-800 mt-1">
+                              <strong>Thực tế lưu kho:</strong> {diffInDays} ngày (từ {start.toLocaleDateString('vi-VN')})
+                            </p>
+                            {alertMsg}
+                          </>
+                        );
+                      })() : (
+                        <p className="text-sm text-gray-500 italic mt-1">Thùng hàng chưa được nhập kho.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 {/* Progress Bar */}
                 <div className="mt-6 border-t pt-4">
-                  <h3 className="font-semibold text-gray-800 mb-2">Tiến trình giao hàng</h3>
+                  <h3 className="font-semibold text-gray-800 mb-2">Tiến trình vận chuyển</h3>
                   <ProgressBar currentStatus={order.status} />
                 </div>
               </CardContent>

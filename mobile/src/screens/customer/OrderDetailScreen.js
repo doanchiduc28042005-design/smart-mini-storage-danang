@@ -161,6 +161,83 @@ export default function OrderDetailScreen({ route, navigation }) {
           </View>
         )}
 
+        {/* Dynamic Status Notifications */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>🔔 Thông báo hệ thống</Text>
+          {order.status === 'WAITING_FOR_PICKUP' && (
+            <View style={[styles.alertBox, { backgroundColor: '#fef3c7', borderColor: '#fde68a' }]}>
+              <Text style={styles.alertIcon}>⏳</Text>
+              <Text style={[styles.alertText, { color: '#92400e' }]}>Đơn hàng đã được ghi nhận. Đang điều phối Shipper đến lấy hàng.</Text>
+            </View>
+          )}
+          {order.status === 'PICKED_UP' && (
+            <View style={[styles.alertBox, { backgroundColor: '#dbeafe', borderColor: '#bfdbfe' }]}>
+              <Text style={styles.alertIcon}>🚚</Text>
+              <Text style={[styles.alertText, { color: '#1e40af' }]}>Shipper đã lấy hàng thành công và đang đưa về kho Hub.</Text>
+            </View>
+          )}
+          {order.status === 'WAITING_FOR_RETURN' && (
+            <View style={[styles.alertBox, { backgroundColor: '#ffedd5', borderColor: '#fed7aa' }]}>
+              <Text style={styles.alertIcon}>📦</Text>
+              <Text style={[styles.alertText, { color: '#9a3412' }]}>Yêu cầu trả hàng đã tiếp nhận. Chờ Shipper điều phối.</Text>
+            </View>
+          )}
+          {order.status === 'RETURNING' && (
+            <View style={[styles.alertBox, { backgroundColor: '#ccfbf1', borderColor: '#99f6e4' }]}>
+              <Text style={styles.alertIcon}>🚚</Text>
+              <Text style={[styles.alertText, { color: '#115e59' }]}>Shipper đang đi trả hàng. Vui lòng chú ý điện thoại.</Text>
+            </View>
+          )}
+          {order.status === 'RETURNED' && (
+            <View style={[styles.alertBox, { backgroundColor: '#d1fae5', borderColor: '#a7f3d0' }]}>
+              <Text style={styles.alertIcon}>✅</Text>
+              <Text style={[styles.alertText, { color: '#065f46' }]}>Đơn hàng đã trả thành công. Cảm ơn bạn!</Text>
+            </View>
+          )}
+          
+          {(order.duration_days > 0 || order.hub_arrival_date || order.status === 'IN_HUB') && (
+            <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#f3f4f6' }}>
+              <Text style={{ fontWeight: 'bold', color: '#4f46e5', marginBottom: 4 }}>⏳ Thông tin lưu kho:</Text>
+              {order.duration_days > 0 && (
+                <Text style={{ fontSize: 13, color: '#374151', marginBottom: 4 }}>
+                  Thời gian thuê: {order.duration_days >= 30 && order.duration_days % 30 === 0 ? `${order.duration_days / 30} tháng` : `${order.duration_days} ngày`}
+                </Text>
+              )}
+              {order.hub_arrival_date ? (() => {
+                const start = new Date(order.hub_arrival_date);
+                const now = new Date();
+                const diffInDays = Math.floor((now.getTime() - start.getTime()) / (1000 * 3600 * 24));
+                
+                let remainingText = null;
+                let color = '#374151';
+                
+                if (order.duration_days > 0) {
+                  const remaining = order.duration_days - diffInDays;
+                  if (remaining < 0) {
+                    remainingText = `⚠️ Quá hạn ${Math.abs(remaining)} ngày`;
+                    color = '#dc2626';
+                  } else if (remaining <= 3) {
+                    remainingText = `⏳ Còn lại ${remaining} ngày (sắp hết hạn)`;
+                    color = '#ea580c';
+                  } else {
+                    remainingText = `✅ Còn lại ${remaining} ngày`;
+                    color = '#16a34a';
+                  }
+                }
+                
+                return (
+                  <View>
+                    <Text style={{ fontSize: 13, color: '#374151' }}>Thực tế lưu kho: {diffInDays} ngày</Text>
+                    {remainingText && <Text style={{ fontSize: 13, fontWeight: 'bold', color: color, marginTop: 4 }}>{remainingText}</Text>}
+                  </View>
+                );
+              })() : (
+                <Text style={{ fontSize: 13, color: '#6b7280', fontStyle: 'italic' }}>Chưa nhập kho</Text>
+              )}
+            </View>
+          )}
+        </View>
+
         {/* Tracking History */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>📋 Lịch sử tracking</Text>
@@ -233,4 +310,7 @@ const styles = StyleSheet.create({
   trackingStatus: { fontSize: 14, fontWeight: '600', color: '#111827' },
   trackingMeta: { fontSize: 11, color: '#6b7280', marginTop: 2 },
   trackingNotes: { fontSize: 12, color: '#374151', marginTop: 4 },
+  alertBox: { flexDirection: 'row', padding: 12, borderRadius: 8, borderWidth: 1, alignItems: 'flex-start', gap: 8 },
+  alertIcon: { fontSize: 18 },
+  alertText: { fontSize: 13, flex: 1, lineHeight: 18, fontWeight: '500' }
 });

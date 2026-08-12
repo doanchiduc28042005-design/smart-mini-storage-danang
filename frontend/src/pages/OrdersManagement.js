@@ -230,18 +230,50 @@ const OrdersManagement = () => {
           </p>
         )}
         {/* Storage duration */}
-        {order.hub_arrival_date && (() => {
-          const start = new Date(order.hub_arrival_date);
-          const now = new Date();
-          const diffInTime = now.getTime() - start.getTime();
-          const diffInDays = Math.floor(diffInTime / (1000 * 3600 * 24));
-          return (
-            <div className="flex items-center justify-between text-xs p-1.5 rounded text-blue-700 bg-blue-50 mt-1">
-              <span>📅 Đã lưu kho: {diffInDays} ngày</span>
-              <span>(Từ: {start.toLocaleDateString('vi-VN')})</span>
-            </div>
-          );
-        })()}
+        {(order.duration_days > 0 || order.hub_arrival_date) && (
+          <div className="flex flex-col text-xs p-1.5 rounded bg-blue-50 mt-1 border border-blue-100">
+            {order.duration_days > 0 && (
+              <div className="flex justify-between items-center mb-0.5 text-blue-800">
+                <span className="font-medium">⏳ Thời gian thuê:</span>
+                <span>{order.duration_days >= 30 && order.duration_days % 30 === 0 ? `${order.duration_days / 30} tháng` : `${order.duration_days} ngày`}</span>
+              </div>
+            )}
+            
+            {order.hub_arrival_date ? (() => {
+              const start = new Date(order.hub_arrival_date);
+              const now = new Date();
+              const diffInTime = now.getTime() - start.getTime();
+              const diffInDays = Math.floor(diffInTime / (1000 * 3600 * 24));
+              
+              let statusText = `Đã lưu kho: ${diffInDays} ngày`;
+              let statusColor = "text-blue-700";
+              
+              if (order.duration_days > 0) {
+                const remaining = order.duration_days - diffInDays;
+                if (remaining < 0) {
+                  statusText = `⚠️ Quá hạn ${Math.abs(remaining)} ngày`;
+                  statusColor = "text-red-600 font-bold";
+                } else if (remaining <= 3) {
+                  statusText = `⏳ Sắp hết hạn (Còn ${remaining} ngày)`;
+                  statusColor = "text-orange-600 font-medium";
+                } else {
+                  statusText = `⏱️ Còn lại: ${remaining} ngày`;
+                }
+              }
+
+              return (
+                <div className={`flex items-center justify-between mt-1 pt-1 ${order.duration_days > 0 ? 'border-t border-blue-200 border-dashed' : ''}`}>
+                  <span className={statusColor}>{statusText}</span>
+                  <span className="text-gray-500 text-[10px]">(Từ: {start.toLocaleDateString('vi-VN')})</span>
+                </div>
+              );
+            })() : (
+              <div className="flex items-center justify-between mt-1 pt-1 border-t border-blue-200 border-dashed">
+                 <span className="text-gray-500 italic">Chưa nhập kho (Hub)</span>
+              </div>
+            )}
+          </div>
+        )}
         {order.last_latitude && (
           <p className="text-xs text-blue-600">
             📍 {order.last_latitude.toFixed(4)}, {order.last_longitude.toFixed(4)}
