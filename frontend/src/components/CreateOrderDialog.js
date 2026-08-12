@@ -140,7 +140,7 @@ const CreateOrderDialog = ({ open, onOpenChange, defaultAddress, onCreated }) =>
   }, [open]);
 
   const resetForm = () => {
-    setBoxes([{ id: Date.now(), size: 'M', item_description: SUGGESTED_DESCS['M'], notes: '' }]);
+    setBoxes([{ id: Date.now(), size: 'M', item_description: '', notes: '' }]);
     setForm({ pickup_date: '', pickup_time: '', pickup_address: '' });
     setShipping({ delivery_method: 'standard', distance_km: 3, floor_number: 0, has_elevator: true });
     setAcceptNoProhibited(false);
@@ -160,9 +160,6 @@ const CreateOrderDialog = ({ open, onOpenChange, defaultAddress, onCreated }) =>
     setBoxes(boxes.map(b => {
       if (b.id === id) {
         let newB = { ...b, [field]: value };
-        if (field === 'size') {
-          newB.item_description = SUGGESTED_DESCS[value] || '';
-        }
         return newB;
       }
       return b;
@@ -170,7 +167,7 @@ const CreateOrderDialog = ({ open, onOpenChange, defaultAddress, onCreated }) =>
   };
 
   const addBox = () => {
-    setBoxes([...boxes, { id: Date.now(), size: 'M', item_description: SUGGESTED_DESCS['M'], notes: '' }]);
+    setBoxes([...boxes, { id: Date.now(), size: 'M', item_description: '', notes: '' }]);
   };
 
   const removeBox = (id) => {
@@ -356,9 +353,10 @@ const CreateOrderDialog = ({ open, onOpenChange, defaultAddress, onCreated }) =>
                       <Label className="text-gray-700">Mô tả hàng hóa *</Label>
                       <Textarea
                         value={box.item_description}
-                        readOnly
+                        onChange={(e) => handleBoxChange(box.id, 'item_description', e.target.value)}
+                        placeholder={SUGGESTED_DESCS[box.size]}
                         rows={2}
-                        className="bg-gray-100 border-gray-300 text-gray-600 cursor-not-allowed"
+                        className="bg-white border-gray-300 text-gray-900"
                       />
                     </div>
                     
