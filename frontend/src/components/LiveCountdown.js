@@ -11,7 +11,7 @@ const LiveCountdown = ({ startDateStr, durationDays }) => {
       const now = new Date();
       const elapsedMs = now.getTime() - start.getTime();
       const elapsedDays = Math.floor(elapsedMs / (1000 * 3600 * 24));
-      setElapsedText(`Đã lưu kho: ${elapsedDays} ngày`);
+      setElapsedText(`Thực tế lưu kho: ${elapsedDays} ngày`);
 
       if (durationDays > 0) {
         const end = new Date(start.getTime() + durationDays * 24 * 3600 * 1000);
@@ -49,7 +49,7 @@ const LiveCountdown = ({ startDateStr, durationDays }) => {
       result += `${days} ngày `;
     }
     
-    result += `${hours.toString().padStart(2, '0')} giờ ${minutes.toString().padStart(2, '0')} phút ${seconds.toString().padStart(2, '0')} giây`;
+    result += `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     return result;
   };
 
@@ -57,6 +57,7 @@ const LiveCountdown = ({ startDateStr, durationDays }) => {
     if (isExpired) {
       return (
         <div className="flex flex-col border-t border-blue-200 border-dashed mt-1 pt-1">
+          <span className="text-gray-500 text-xs mb-0.5">{elapsedText}</span>
           <span className="text-red-600 font-bold text-sm">⚠️ Quá hạn: {timeLeft}</span>
           <span className="text-gray-500 text-[10px]">(Từ: {new Date(startDateStr).toLocaleString('vi-VN')})</span>
         </div>
@@ -64,6 +65,7 @@ const LiveCountdown = ({ startDateStr, durationDays }) => {
     }
     return (
       <div className="flex flex-col border-t border-blue-200 border-dashed mt-1 pt-1">
+        <span className="text-gray-500 text-xs mb-0.5">{elapsedText}</span>
         <span className="text-green-600 font-bold text-sm">⏱️ Còn lại: {timeLeft}</span>
         <span className="text-gray-500 text-[10px]">(Từ: {new Date(startDateStr).toLocaleString('vi-VN')})</span>
       </div>
