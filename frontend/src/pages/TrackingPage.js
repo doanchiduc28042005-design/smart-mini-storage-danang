@@ -235,8 +235,8 @@ const TrackingPage = () => {
                         </p>
                       )}
                       
-                      {order.hub_arrival_date ? (() => {
-                        const start = new Date(order.hub_arrival_date);
+                      {(order.hub_arrival_date || order.status === 'IN_HUB') ? (() => {
+                        const start = new Date(order.hub_arrival_date || order.last_updated || order.created_at);
                         const now = new Date();
                         const diffInDays = Math.floor((now.getTime() - start.getTime()) / (1000 * 3600 * 24));
                         

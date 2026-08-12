@@ -230,17 +230,15 @@ const OrdersManagement = () => {
           </p>
         )}
         {/* Storage duration */}
-        {(order.duration_days > 0 || order.hub_arrival_date) && (
-          <div className="flex flex-col text-xs p-1.5 rounded bg-blue-50 mt-1 border border-blue-100">
-            {order.duration_days > 0 && (
-              <div className="flex justify-between items-center mb-0.5 text-blue-800">
-                <span className="font-medium">⏳ Thời gian thuê:</span>
-                <span>{order.duration_days >= 30 && order.duration_days % 30 === 0 ? `${order.duration_days / 30} tháng` : `${order.duration_days} ngày`}</span>
-              </div>
-            )}
+        {(order.duration_days > 0 || order.hub_arrival_date || order.status === 'IN_HUB') && (
+          <div className="mt-4 p-3 rounded-md bg-blue-50 border border-blue-100 text-sm">
+            <h4 className="font-semibold text-blue-800 flex items-center gap-1">
+              <span>⏳</span> Thời gian thuê 
+              <span className="ml-auto font-bold text-blue-600">{order.duration_days >= 30 && order.duration_days % 30 === 0 ? `${order.duration_days / 30} tháng` : `${order.duration_days} ngày`}</span>
+            </h4>
             
-            {order.hub_arrival_date ? (() => {
-              const start = new Date(order.hub_arrival_date);
+            {(order.hub_arrival_date || order.status === 'IN_HUB') ? (() => {
+              const start = new Date(order.hub_arrival_date || order.last_updated || order.created_at);
               const now = new Date();
               const diffInTime = now.getTime() - start.getTime();
               const diffInDays = Math.floor(diffInTime / (1000 * 3600 * 24));

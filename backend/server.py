@@ -1235,7 +1235,8 @@ async def process_qr_scan(data: QRScanRequest):
         # Calculate expiry date: now + duration_days
         expiry_date = now + timedelta(days=duration_days)
         update_fields["storage_expiry_date"] = expiry_date.isoformat()
-    
+        update_fields["hub_arrival_date"] = now.isoformat()
+
     await db.orders.update_one(
         {"order_id": data.order_id},
         {"$set": update_fields}

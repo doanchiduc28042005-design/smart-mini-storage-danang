@@ -203,8 +203,8 @@ export default function OrderDetailScreen({ route, navigation }) {
                   Thời gian thuê: {order.duration_days >= 30 && order.duration_days % 30 === 0 ? `${order.duration_days / 30} tháng` : `${order.duration_days} ngày`}
                 </Text>
               )}
-              {order.hub_arrival_date ? (() => {
-                const start = new Date(order.hub_arrival_date);
+              {(order.hub_arrival_date || order.status === 'IN_HUB') ? (() => {
+                const start = new Date(order.hub_arrival_date || order.last_updated || order.created_at);
                 const now = new Date();
                 const diffInDays = Math.floor((now.getTime() - start.getTime()) / (1000 * 3600 * 24));
                 
