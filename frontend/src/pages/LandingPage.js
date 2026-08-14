@@ -32,7 +32,7 @@ const LandingPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <Link to="/" className="flex items-center">
-              <img src={logoImg} alt="Smart Mini Storage Logo" className="h-14 w-auto object-contain" />
+              <img src={logoImg} alt="Smart Mini Storage Logo" className="h-20 w-auto object-contain" />
             </Link>
             <div className="hidden md:flex space-x-8 items-center">
               <a href="#about" className="text-gray-600 hover:text-blue-700 font-medium transition-colors">Về Chúng Tôi</a>
@@ -431,7 +431,7 @@ const LandingPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="col-span-1 md:col-span-2">
             <div className="mb-6">
-              <img src={logoImg} alt="Smart Mini Storage Logo" className="h-16 w-auto object-contain bg-white/10 rounded p-2" />
+              <img src={logoImg} alt="Smart Mini Storage Logo" className="h-30 w-auto object-contain bg-white/10 rounded p-2" />
             </div>
             <p className="text-sm mb-4 max-w-sm">
               Lưu trữ thông minh - Vận chuyển an toàn. Chúng tôi cung cấp giải pháp kho bãi số hóa khép kín dành cho khách du lịch, hộ gia đình và shop online.
