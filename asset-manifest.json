@@ -1,7 +1,7 @@
 {
   "files": {
-    "main.css": "/smart-mini-storage-danang/static/css/main.7fc9ac3f.css",
-    "main.js": "/smart-mini-storage-danang/static/js/main.e6903cc1.js",
+    "main.css": "/smart-mini-storage-danang/static/css/main.02a6d172.css",
+    "main.js": "/smart-mini-storage-danang/static/js/main.b2824075.js",
     "static/css/533.e0788051.chunk.css": "/smart-mini-storage-danang/static/css/533.e0788051.chunk.css",
     "static/js/533.6e089074.chunk.js": "/smart-mini-storage-danang/static/js/533.6e089074.chunk.js",
     "static/css/119.e0788051.chunk.css": "/smart-mini-storage-danang/static/css/119.e0788051.chunk.css",
@@ -22,16 +22,19 @@
     "static/js/258.8d39c3b3.chunk.js": "/smart-mini-storage-danang/static/js/258.8d39c3b3.chunk.js",
     "static/js/971.cb6ba4e5.chunk.js": "/smart-mini-storage-danang/static/js/971.cb6ba4e5.chunk.js",
     "static/js/824.e19e2b47.chunk.js": "/smart-mini-storage-danang/static/js/824.e19e2b47.chunk.js",
+    "static/js/832.fbcbf835.chunk.js": "/smart-mini-storage-danang/static/js/832.fbcbf835.chunk.js",
     "static/js/353.164b134e.chunk.js": "/smart-mini-storage-danang/static/js/353.164b134e.chunk.js",
     "static/js/952.c0c9d1da.chunk.js": "/smart-mini-storage-danang/static/js/952.c0c9d1da.chunk.js",
     "static/js/920.dd15b594.chunk.js": "/smart-mini-storage-danang/static/js/920.dd15b594.chunk.js",
     "static/js/756.d0ab1ecb.chunk.js": "/smart-mini-storage-danang/static/js/756.d0ab1ecb.chunk.js",
     "static/js/362.197c9cc3.chunk.js": "/smart-mini-storage-danang/static/js/362.197c9cc3.chunk.js",
+    "static/js/872.bb505efc.chunk.js": "/smart-mini-storage-danang/static/js/872.bb505efc.chunk.js",
     "static/js/355.b7d57227.chunk.js": "/smart-mini-storage-danang/static/js/355.b7d57227.chunk.js",
     "static/js/803.ad1c26f0.chunk.js": "/smart-mini-storage-danang/static/js/803.ad1c26f0.chunk.js",
+    "static/media/logo.png": "/smart-mini-storage-danang/static/media/logo.25800cd2613398386456.png",
     "index.html": "/smart-mini-storage-danang/index.html",
-    "main.7fc9ac3f.css.map": "/smart-mini-storage-danang/static/css/main.7fc9ac3f.css.map",
-    "main.e6903cc1.js.map": "/smart-mini-storage-danang/static/js/main.e6903cc1.js.map",
+    "main.02a6d172.css.map": "/smart-mini-storage-danang/static/css/main.02a6d172.css.map",
+    "main.b2824075.js.map": "/smart-mini-storage-danang/static/js/main.b2824075.js.map",
     "533.e0788051.chunk.css.map": "/smart-mini-storage-danang/static/css/533.e0788051.chunk.css.map",
     "533.6e089074.chunk.js.map": "/smart-mini-storage-danang/static/js/533.6e089074.chunk.js.map",
     "119.e0788051.chunk.css.map": "/smart-mini-storage-danang/static/css/119.e0788051.chunk.css.map",
@@ -52,16 +55,18 @@
     "258.8d39c3b3.chunk.js.map": "/smart-mini-storage-danang/static/js/258.8d39c3b3.chunk.js.map",
     "971.cb6ba4e5.chunk.js.map": "/smart-mini-storage-danang/static/js/971.cb6ba4e5.chunk.js.map",
     "824.e19e2b47.chunk.js.map": "/smart-mini-storage-danang/static/js/824.e19e2b47.chunk.js.map",
+    "832.fbcbf835.chunk.js.map": "/smart-mini-storage-danang/static/js/832.fbcbf835.chunk.js.map",
     "353.164b134e.chunk.js.map": "/smart-mini-storage-danang/static/js/353.164b134e.chunk.js.map",
     "952.c0c9d1da.chunk.js.map": "/smart-mini-storage-danang/static/js/952.c0c9d1da.chunk.js.map",
     "920.dd15b594.chunk.js.map": "/smart-mini-storage-danang/static/js/920.dd15b594.chunk.js.map",
     "756.d0ab1ecb.chunk.js.map": "/smart-mini-storage-danang/static/js/756.d0ab1ecb.chunk.js.map",
     "362.197c9cc3.chunk.js.map": "/smart-mini-storage-danang/static/js/362.197c9cc3.chunk.js.map",
+    "872.bb505efc.chunk.js.map": "/smart-mini-storage-danang/static/js/872.bb505efc.chunk.js.map",
     "355.b7d57227.chunk.js.map": "/smart-mini-storage-danang/static/js/355.b7d57227.chunk.js.map",
     "803.ad1c26f0.chunk.js.map": "/smart-mini-storage-danang/static/js/803.ad1c26f0.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.7fc9ac3f.css",
-    "static/js/main.e6903cc1.js"
+    "static/css/main.02a6d172.css",
+    "static/js/main.b2824075.js"
   ]
 }
