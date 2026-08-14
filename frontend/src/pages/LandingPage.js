@@ -32,7 +32,7 @@ const LandingPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <Link to="/" className="flex items-center">
-              <img src={logoImg} alt="Smart Mini Storage Logo" className="h-20 w-auto object-contain" />
+              <img src={logoImg} alt="Smart Mini Storage Logo" className="h-16 w-auto object-contain" />
             </Link>
             <div className="hidden md:flex space-x-8 items-center">
               <a href="#about" className="text-gray-600 hover:text-blue-700 font-medium transition-colors">Về Chúng Tôi</a>
