@@ -1,11 +1,12 @@
 # 📦 Smart Mini Storage (SMS) - Đà Nẵng
 
 > **Lưu trữ thông minh - Vận chuyển an toàn**  
-> *Hệ thống dịch vụ lưu trữ mini, giao nhận tận nơi và quản lý kho số hóa dành cho Khách du lịch, Chủ shop online và Hộ gia đình tại Thành phố Đà Nẵng.*
+> _Hệ thống dịch vụ lưu trữ mini, giao nhận tận nơi và quản lý kho số hóa dành cho Khách du lịch, Chủ shop online và Hộ gia đình tại Thành phố Đà Nẵng._
 
 ---
 
 ## 📑 Mục lục
+
 - [Giới thiệu dự án](#-giới-thiệu-dự-án)
 - [Tính năng nổi bật](#-tính-năng-nổi-bật)
 - [Công nghệ sử dụng](#-công-nghệ-sử-dụng)
@@ -23,6 +24,7 @@
 ## 🌟 Giới thiệu dự án
 
 **Smart Mini Storage (SMS)** là giải pháp toàn diện kết hợp giữa **nền tảng Web, Ứng dụng Di động (Mobile App) và Hệ thống Quản trị Kho (WMS)** nhằm giải quyết các vấn đề quá tải không gian lưu trữ và vận chuyển đồ đạc tại khu vực Đà Nẵng:
+
 - **Khách du lịch**: Gửi hành lý cồng kềnh linh hoạt theo ngày/tuần khi chưa đến giờ check-in hoặc sau khi check-out, di chuyển tự do.
 - **Chủ shop online / Doanh nghiệp nhỏ**: Thuê kho linh động theo lượng hàng thực tế, không yêu cầu hợp đồng dài hạn, giảm áp lực chi phí mặt bằng.
 - **Hộ gia đình**: Giải phóng không gian sống, lưu trữ an toàn đồ đạc ít sử dụng (đồ theo mùa, nệm, vali, v.v.).
@@ -32,6 +34,7 @@
 ## 🚀 Tính năng nổi bật
 
 ### 1. 👤 Khách hàng (Customer Hub & Mobile App)
+
 - **Landing Page hiện đại**: Giới thiệu giải pháp, bảng giá minh bạch, hiệu ứng mượt mà và bảo mật thông tin nội bộ.
 - **Đặt đơn linh hoạt**: Chọn kích cỡ thùng (Size S/M/L), mô tả hàng hóa, thời gian thuê (theo ngày/tháng), địa chỉ giao nhận.
 - **Tự động tính phí vận chuyển thông minh**: Tính theo khoảng cách thực tế (km) và phụ phí bê vác cầu thang/tầng lầu.
@@ -40,11 +43,13 @@
 - **Trợ lý ảo AI Chatbot**: Tự động tư vấn kích thước thùng và giải đáp quy trình dịch vụ 24/7.
 
 ### 2. 🚚 Đội ngũ Shipper (Shipper App)
+
 - **Quét mã QR Code**: Tiếp nhận thùng rỗng, dán niêm phong seal và quét mã bàn giao nhanh chóng.
 - **Nhận chuyến & Điều hướng**: Xem chi tiết lộ trình lấy hàng/giao hàng, liên hệ trực tiếp với khách hàng.
 - **Cập nhật trạng thái tức thì**: Đồng bộ trạng thái đơn hàng và thông báo về hệ thống quản lý.
 
 ### 3. 🏢 Quản trị viên (Admin & Hub Manager)
+
 - **Quản lý kho WMS (Warehouse Management System)**: Sơ đồ quản lý vị trí kệ kho (Lộ trình tối ưu chữ U), theo dõi tồn kho thùng rỗng và thùng đang chứa đồ.
 - **Quản lý đơn hàng & Khách hàng**: Quản lý toàn bộ vòng đời đơn hàng, gia hạn, hủy đơn, xử lý yêu cầu trả hàng.
 - **Quản lý phân quyền**: Phân quyền chi tiết cho Admin, Nhân viên kho và Đội ngũ Shipper.
@@ -53,14 +58,14 @@
 
 ## 🛠️ Công nghệ sử dụng
 
-| Phân hệ | Công nghệ & Thư viện |
-| :--- | :--- |
-| **Backend API** | Python 3.10+, FastAPI, Uvicorn, Motor (Async MongoDB), Pydantic |
-| **Database** | MongoDB Atlas / Local MongoDB |
-| **Bảo mật & Mã hóa** | PyJWT (Authentication), Bcrypt (Password Hashing) |
-| **Tích hợp AI** | LiteLLM, Groq API (AI Chatbot hỗ trợ khách hàng) |
-| **Web Frontend** | React 19, React Router v7, TailwindCSS, Radix UI, Framer Motion, Leaflet Maps, Axios |
-| **Mobile App** | React Native, Expo SDK 54, NativeWind, React Navigation, Expo Camera/Location |
+| Phân hệ              | Công nghệ & Thư viện                                                                 |
+| :------------------- | :----------------------------------------------------------------------------------- |
+| **Backend API**      | Python 3.10+, FastAPI, Uvicorn, Motor (Async MongoDB), Pydantic                      |
+| **Database**         | MongoDB Atlas / Local MongoDB                                                        |
+| **Bảo mật & Mã hóa** | PyJWT (Authentication), Bcrypt (Password Hashing)                                    |
+| **Tích hợp AI**      | LiteLLM, Groq API (AI Chatbot hỗ trợ khách hàng)                                     |
+| **Web Frontend**     | React 19, React Router v7, TailwindCSS, Radix UI, Framer Motion, Leaflet Maps, Axios |
+| **Mobile App**       | React Native, Expo SDK 54, NativeWind, React Navigation, Expo Camera/Location        |
 
 ---
 
@@ -97,17 +102,18 @@ smart-mini-storage-danang/
 
 ## 💰 Bảng giá dịch vụ
 
-| Loại thùng | Kích thước (Dài x Rộng x Cao) | Dung tích | Giá theo ngày | Giá theo tháng | Sức chứa gợi ý |
-| :---: | :---: | :---: | :---: | :---: | :--- |
-| **Size S** | 52 x 36.5 x 27.5 cm | ~52.2 L | **4.000 VNĐ** | **120.000 VNĐ** | 3-5 đôi giày, tài liệu, balo laptop / 25-30 áo |
-| **Size M** *(Phổ biến)* | 62 x 44.5 x 32 cm | ~88.4 L | **6.000 VNĐ** | **180.000 VNĐ** | Đồ cắm trại, chăn mền, đồ thể thao / 50-60 áo |
-| **Size L** | 69.5 x 50 x 36 cm | ~125.1 L | **9.000 VNĐ** | **270.000 VNĐ** | Vali lớn, chăn ga gối nệm, chuyển trọ / 80-100 áo |
+|       Loại thùng        | Kích thước (Dài x Rộng x Cao) | Dung tích | Giá theo ngày | Giá theo tháng  | Sức chứa gợi ý                                    |
+| :---------------------: | :---------------------------: | :-------: | :-----------: | :-------------: | :------------------------------------------------ |
+|       **Size S**        |      52 x 36.5 x 27.5 cm      |  ~52.2 L  | **4.000 VNĐ** | **120.000 VNĐ** | 3-5 đôi giày, tài liệu, balo laptop / 25-30 áo    |
+| **Size M** _(Phổ biến)_ |       62 x 44.5 x 32 cm       |  ~88.4 L  | **6.000 VNĐ** | **180.000 VNĐ** | Đồ cắm trại, chăn mền, đồ thể thao / 50-60 áo     |
+|       **Size L**        |       69.5 x 50 x 36 cm       | ~125.1 L  | **9.000 VNĐ** | **270.000 VNĐ** | Vali lớn, chăn ga gối nệm, chuyển trọ / 80-100 áo |
 
 ---
 
 ## ⚙️ Hướng dẫn cài đặt & Khởi chạy
 
 ### Yêu cầu tiên quyết
+
 - **Node.js** (>= 18.x) & **Yarn** hoặc **npm**
 - **Python** (>= 3.10)
 - **MongoDB** (Local hoặc URI MongoDB Atlas)
@@ -140,6 +146,7 @@ pip install -r requirements.txt
 # 5. Khởi chạy server
 uvicorn server:app --reload --port 8000
 ```
+
 > API Swagger UI xem tại: `http://localhost:8000/docs`
 
 ---
@@ -158,6 +165,7 @@ yarn install
 yarn start
 # hoặc: npm start
 ```
+
 > Truy cập Web tại: `http://localhost:3000`
 
 ---
@@ -174,6 +182,7 @@ npm install
 # 3. Khởi chạy Expo Dev Server
 npx expo start -c
 ```
+
 > Quét mã QR bằng ứng dụng **Expo Go** (Android/iOS) hoặc nhấn `w` để mở giao diện Web.
 
 ---
@@ -199,9 +208,10 @@ graph LR
 ## 👥 Liên hệ & Đội ngũ
 
 - **Đơn vị phát triển**: Smart Mini Storage Team - Đà Nẵng
-- **Slogan**: *Lưu trữ thông minh - Vận chuyển an toàn*
-- **Email hỗ trợ**: AnhTTH@smartmini.vn | TriDM@smartmini.vn | DucDC@smartmini.vn
+- **Slogan**: _Lưu trữ thông minh - Vận chuyển an toàn_
+- **Email hỗ trợ**: DucDC@smartmini.vn (Project Management) | DangLH@smartmini.vn (Tech Lead)
 - **Địa bàn phục vụ**: Thành phố Đà Nẵng, Việt Nam
 
 ---
-*© 2026 Smart Mini Storage. All rights reserved.*
+
+_© 2026 Smart Mini Storage. All rights reserved._
