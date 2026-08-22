@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
 const API_URL = `${BACKEND_URL}/api`;
@@ -77,39 +79,35 @@ const AIChatbot = () => {
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/50">
-            {messages.map((msg, index) => {
-              // Parse simple bold markdown (**text**)
-              const formatMessage = (text) => {
-                if (!text) return null;
-                const parts = text.split(/(\*\*.*?\*\*)/g);
-                return parts.map((part, i) => {
-                  if (part.startsWith('**') && part.endsWith('**')) {
-                    return <strong key={i}>{part.slice(2, -2)}</strong>;
-                  }
-                  return part;
-                });
-              };
-              
-              return (
+            {messages.map((msg, index) => (
+              <div 
+                key={index} 
+                className={`flex flex-col max-w-[85%] ${msg.role === 'user' ? 'ml-auto items-end' : 'mr-auto items-start'}`}
+              >
                 <div 
-                  key={index} 
-                  className={`flex flex-col max-w-[85%] ${msg.role === 'user' ? 'ml-auto items-end' : 'mr-auto items-start'}`}
+                  className={`p-3 rounded-2xl text-sm shadow-sm prose prose-sm max-w-none ${
+                    msg.role === 'user' 
+                      ? 'bg-indigo-600 text-white rounded-tr-sm prose-invert' 
+                      : 'bg-white border border-gray-100 text-gray-800 rounded-tl-sm'
+                  }`}
                 >
-                  <div 
-                    className={`p-3 rounded-2xl text-sm shadow-sm whitespace-pre-wrap ${
-                      msg.role === 'user' 
-                        ? 'bg-indigo-600 text-white rounded-tr-sm' 
-                        : 'bg-white border border-gray-100 text-gray-800 rounded-tl-sm'
-                    }`}
+                  <ReactMarkdown 
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      p: ({node, ...props}) => <p className="mb-2 last:mb-0 whitespace-pre-wrap" {...props} />,
+                      ul: ({node, ...props}) => <ul className="list-disc pl-4 mb-2" {...props} />,
+                      ol: ({node, ...props}) => <ol className="list-decimal pl-4 mb-2" {...props} />,
+                      li: ({node, ...props}) => <li className="mb-1" {...props} />
+                    }}
                   >
-                    {formatMessage(msg.content)}
-                  </div>
-                  <span className="text-[10px] text-gray-400 mt-1 px-1">
-                    {msg.role === 'user' ? 'Bạn' : 'AI'}
-                  </span>
+                    {msg.content}
+                  </ReactMarkdown>
                 </div>
-              );
-            })}
+                <span className="text-[10px] text-gray-400 mt-1 px-1">
+                  {msg.role === 'user' ? 'Bạn' : 'AI'}
+                </span>
+              </div>
+            ))}
             
             {isLoading && (
               <div className="flex max-w-[80%] mr-auto">
