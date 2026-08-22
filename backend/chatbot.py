@@ -45,7 +45,7 @@ async def chat_with_ai(request: ChatRequest):
             messages.append({"role": msg.role, "content": msg.content})
 
         response = await acompletion(
-            model="groq/llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b",
             messages=messages,
             temperature=0.7,
             max_tokens=800
