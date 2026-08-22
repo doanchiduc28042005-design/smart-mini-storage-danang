@@ -77,25 +77,39 @@ const AIChatbot = () => {
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/50">
-            {messages.map((msg, index) => (
-              <div 
-                key={index} 
-                className={`flex flex-col max-w-[85%] ${msg.role === 'user' ? 'ml-auto items-end' : 'mr-auto items-start'}`}
-              >
+            {messages.map((msg, index) => {
+              // Parse simple bold markdown (**text**)
+              const formatMessage = (text) => {
+                if (!text) return null;
+                const parts = text.split(/(\*\*.*?\*\*)/g);
+                return parts.map((part, i) => {
+                  if (part.startsWith('**') && part.endsWith('**')) {
+                    return <strong key={i}>{part.slice(2, -2)}</strong>;
+                  }
+                  return part;
+                });
+              };
+              
+              return (
                 <div 
-                  className={`p-3 rounded-2xl text-sm shadow-sm ${
-                    msg.role === 'user' 
-                      ? 'bg-indigo-600 text-white rounded-tr-sm' 
-                      : 'bg-white border border-gray-100 text-gray-800 rounded-tl-sm'
-                  }`}
+                  key={index} 
+                  className={`flex flex-col max-w-[85%] ${msg.role === 'user' ? 'ml-auto items-end' : 'mr-auto items-start'}`}
                 >
-                  {msg.content}
+                  <div 
+                    className={`p-3 rounded-2xl text-sm shadow-sm whitespace-pre-wrap ${
+                      msg.role === 'user' 
+                        ? 'bg-indigo-600 text-white rounded-tr-sm' 
+                        : 'bg-white border border-gray-100 text-gray-800 rounded-tl-sm'
+                    }`}
+                  >
+                    {formatMessage(msg.content)}
+                  </div>
+                  <span className="text-[10px] text-gray-400 mt-1 px-1">
+                    {msg.role === 'user' ? 'Bạn' : 'AI'}
+                  </span>
                 </div>
-                <span className="text-[10px] text-gray-400 mt-1 px-1">
-                  {msg.role === 'user' ? 'Bạn' : 'AI'}
-                </span>
-              </div>
-            ))}
+              );
+            })}
             
             {isLoading && (
               <div className="flex max-w-[80%] mr-auto">
