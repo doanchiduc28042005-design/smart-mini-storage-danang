@@ -44,11 +44,12 @@ async def chat_with_ai(request: ChatRequest):
         for msg in request.messages:
             messages.append({"role": msg.role, "content": msg.content})
 
+        model = os.environ.get("AI_MODEL", "openai/gpt-oss-120b")
         response = await acompletion(
-            model="openai/gpt-oss-120b",
+            model=model,
             messages=messages,
             temperature=0.7,
-            max_tokens=800
+            max_tokens=2000
         )
         
         reply = response.choices[0].message.content
